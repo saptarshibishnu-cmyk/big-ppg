@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>BIG · PhysioScan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080c10; --bg2:#0d1219; --bg3:#131a24;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --teal:#2dd4a0; --teal-dim:#1a7a5e;
+  --amber:#f0a832; --red:#e8504a; --blue:#5b9cf6;
+  --text:#dde4ec; --muted:#5a6a7a;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:calc(72px + max(8px,env(safe-area-inset-bottom)))}
+.screen.active{display:flex}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+.brand{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.14em}
+.brand b{color:var(--teal);font-weight:500}
+.topbar-title{font-size:14px;font-weight:600}
+.topbar-right{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:60px;text-align:right}
+
+/* ── FORMS ── */
+.form-wrap{padding:16px 20px;flex:1}
+.form-section{margin-bottom:22px}
+.flabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:block}
+.frow{display:flex;gap:8px;margin-bottom:8px}
+.field{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px 14px;color:var(--text);font-family:var(--sans);font-size:15px;outline:none;transition:border-color .2s;-webkit-appearance:none;width:100%}
+.field:focus{border-color:var(--teal-dim)}
+.field::placeholder{color:var(--muted)}
+select.field{cursor:pointer}
+option{background:#1a2230}
+textarea.field{resize:vertical;min-height:72px;font-size:14px;line-height:1.5}
+
+/* ── SEGMENTED CONTROLS ── */
+.seg{display:flex;background:var(--bg3);border-radius:10px;padding:3px;border:1px solid var(--border)}
+.seg-btn{flex:1;padding:9px 6px;text-align:center;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;transition:background .15s,color .15s;color:var(--muted);border:none;background:none;font-family:var(--sans);white-space:nowrap}
+.seg-btn.active{background:var(--teal-dim);color:var(--teal)}
+.seg-btn.active-red{background:rgba(232,80,74,.18);color:var(--red)}
+.seg-btn.active-amber{background:rgba(240,168,50,.15);color:var(--amber)}
+
+/* Group toggle — big buttons */
+.group-toggle{display:flex;gap:10px;margin-bottom:20px}
+.grp-btn{flex:1;padding:18px 10px;border:2px solid var(--border);border-radius:14px;background:var(--bg2);color:var(--muted);font-family:var(--sans);font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center}
+.grp-btn .grp-icon{font-size:28px;display:block;margin-bottom:6px}
+.grp-btn.active-cld{border-color:var(--red);background:rgba(232,80,74,.08);color:var(--red)}
+.grp-btn.active-ctl{border-color:var(--teal);background:rgba(45,212,160,.08);color:var(--teal)}
+
+/* ── BUTTONS ── */
+.btn-primary{width:100%;padding:16px;background:var(--teal);border:none;border-radius:12px;color:#060e0c;font-family:var(--sans);font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;margin-top:4px}
+.btn-primary:active{transform:scale(.98);opacity:.9}
+.btn-primary:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.btn-secondary{width:100%;padding:14px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;margin-top:8px}
+
+/* Step progress indicator */
+.step-bar{display:flex;gap:4px;padding:12px 20px 0}
+.step-pip{flex:1;height:3px;border-radius:2px;background:var(--bg3);transition:background .3s}
+.step-pip.done{background:var(--teal)}
+.step-pip.active{background:var(--teal-dim)}
+
+/* ── RECORD SCREEN ── */
+.patient-banner{margin:12px 20px 0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center}
+.patient-name{font-size:14px;font-weight:600}
+.patient-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.group-pill{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;letter-spacing:.06em}
+.group-pill.cld{background:rgba(232,80,74,.15);color:var(--red)}
+.group-pill.ctl{background:rgba(45,212,160,.12);color:var(--teal)}
+
+.sensor-wrap{display:flex;flex-direction:column;align-items:center;padding:16px 20px 12px}
+.sensor-ring{width:160px;height:160px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative;transition:border-color .3s;background:var(--bg2)}
+.sensor-ring.contact{border-color:var(--teal)}
+.sensor-ring.bad{border-color:var(--red)}
+.sensor-ring.contact::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid var(--teal);opacity:.25;animation:ring-pulse 1.4s ease-in-out infinite}
+@keyframes ring-pulse{0%,100%{transform:scale(1);opacity:.25}50%{transform:scale(1.04);opacity:.06}}
+.sensor-icon{font-size:38px;margin-bottom:4px}
+.sensor-hint{font-size:11px;color:var(--muted);text-align:center;padding:0 16px;line-height:1.5}
+
+.quality-row{width:100%;display:flex;align-items:center;gap:10px;padding:0 20px;margin-bottom:10px}
+.quality-track{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.quality-fill{height:100%;width:0%;border-radius:2px;transition:width .1s,background .3s;background:var(--teal)}
+.quality-fill.warn{background:var(--amber)}
+.quality-fill.bad{background:var(--red)}
+.quality-label{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:56px;text-align:right}
+
+.wave-card{margin:0 20px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px}
+.wave-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:6px}
+#waveCanvas{width:100%;height:100px;display:block;border-radius:6px;background:var(--bg)}
+
+.metrics-strip{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:0 20px;margin-bottom:10px}
+.metric-cell{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 6px;text-align:center}
+.metric-val{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--teal);line-height:1;margin-bottom:2px}
+.metric-val.dim{color:var(--bg3)}
+.metric-lbl{font-size:9px;color:var(--muted);letter-spacing:.06em;font-family:var(--mono)}
+
+.prog-wrap{padding:0 20px;margin-bottom:10px}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:4px}
+.prog-row span{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.prog-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;width:0%;background:var(--red);border-radius:2px;transition:width .5s linear}
+
+.status-line{font-size:12px;color:var(--muted);text-align:center;padding:0 20px;margin-bottom:10px;min-height:18px}
+.status-line.ok{color:var(--teal)}
+.status-line.warn{color:var(--amber)}
+.status-line.err{color:var(--red)}
+
+.rec-controls{display:flex;gap:8px;padding:0 20px}
+.btn-rec{flex:1;padding:14px;border:none;border-radius:12px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn-rec:active{transform:scale(.97)}
+.btn-rec:disabled{opacity:.25;cursor:not-allowed;transform:none}
+.btn-start{background:var(--teal);color:#060e0c}
+.btn-stop{background:var(--red);color:#fff}
+.btn-cancel{background:var(--bg3);color:var(--muted);flex:0 0 auto;padding:14px 14px}
+
+/* ── RESULTS ── */
+.results-wrap{padding:14px 20px;flex:1}
+.results-header{margin-bottom:16px}
+.results-name{font-size:18px;font-weight:600;margin-bottom:3px}
+.results-sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.result-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px}
+.result-card.full{grid-column:1/-1}
+.rc-label{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.rc-val{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--teal);line-height:1}
+.rc-unit{font-size:11px;color:var(--muted);margin-top:2px}
+.rc-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:3px}
+.wave-result{width:100%;height:70px}
+.risk-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono);margin-top:6px}
+.risk-badge.low{background:rgba(45,212,160,.12);color:var(--teal);border:1px solid rgba(45,212,160,.25)}
+.risk-badge.medium{background:rgba(240,168,50,.12);color:var(--amber);border:1px solid rgba(240,168,50,.25)}
+.risk-badge.high{background:rgba(232,80,74,.12);color:var(--red);border:1px solid rgba(232,80,74,.25)}
+
+.export-row{display:flex;gap:8px;margin-top:12px}
+.btn-export{flex:1;padding:12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg3);color:var(--text);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:border-color .15s,transform .1s}
+.btn-export:active{transform:scale(.97)}
+.btn-new{width:100%;padding:14px;margin-top:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer}
+
+/* ── SESSIONS ── */
+.db-actions{padding:10px 20px 0;display:flex;gap:8px;flex-wrap:wrap}
+.session-list{padding:10px 20px;flex:1}
+.session-empty{text-align:center;padding:50px 20px;color:var(--muted);font-size:14px}
+.session-item{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.session-item:active{border-color:var(--teal-dim)}
+.si-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+.si-name{font-size:14px;font-weight:600}
+.si-time{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.si-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:3px}
+.si-metric{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.si-metric b{color:var(--teal);font-weight:500}
+
+/* ── DATA ENTRY SCREENS ── */
+.de-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.de-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px}
+
+/* Radio-style option buttons */
+.opt-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.opt-btn{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--muted);font-size:13px;font-family:var(--sans);cursor:pointer;transition:all .15s;white-space:nowrap}
+.opt-btn.sel{border-color:var(--teal);background:rgba(45,212,160,.1);color:var(--teal)}
+.opt-btn.sel-red{border-color:var(--red);background:rgba(232,80,74,.1);color:var(--red)}
+.opt-btn.sel-amber{border-color:var(--amber);background:rgba(240,168,50,.1);color:var(--amber)}
+
+/* CTP calculator */
+.ctp-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ctp-label{font-size:13px;color:var(--text);flex:0 0 110px}
+.ctp-score-box{background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;text-align:center;margin-top:6px}
+.ctp-class{font-family:var(--mono);font-size:32px;font-weight:500}
+.ctp-class.A{color:var(--teal)} .ctp-class.B{color:var(--amber)} .ctp-class.C{color:var(--red)}
+
+/* ── NAV ── */
+.navbar{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 4px;background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--sans);transition:color .15s;-webkit-tap-highlight-color:transparent}
+.nav-btn.active{color:var(--teal)}
+.nav-icon{font-size:18px;line-height:1}
+.nav-label{font-size:9px;letter-spacing:.05em;font-weight:500}
+
+video,#camCanvas{display:none}
+
+/* Divider */
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* Inline info text */
+.info-text{font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px}
+</style>
+</head>
+<body>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="camCanvas"></canvas>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 0 — ENROLMENT (Group + Demographics)
+═══════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screenEnrol">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title">New Enrolment</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="step-bar">
+    <div class="step-pip active" id="pip0"></div>
+    <div class="step-pip" id="pip1"></div>
+    <div class="step-pip" id="pip2"></div>
+    <div class="step-pip" id="pip3"></div>
+    <div class="step-pip" id="pip4"></div>
+  </div>
+  <div class="form-wrap">
+
+    <!-- GROUP SELECTION -->
+    <div class="form-section">
+      <span class="flabel">Study group</span>
+      <div class="group-toggle">
+        <button class="grp-btn" id="grpCLD" onclick="setGroup('CLD')">
+          <span class="grp-icon">🫀</span>CLD Patient
+        </button>
+        <button class="grp-btn" id="grpCTL" onclick="setGroup('CTL')">
+          <span class="grp-icon">✅</span>Healthy Control
+        </button>
+      </div>
+    </div>
+
+    <!-- IDENTITY -->
+    <div class="form-section">
+      <span class="flabel">Identity</span>
+      <div class="frow">
+        <input class="field" id="fStudyId" placeholder="Study ID (auto)" readonly style="color:var(--muted);flex:0 0 110px">
+        <input class="field" id="fMRN" placeholder="MRN / BIG ID">
+      </div>
+      <div class="frow">
+        <input class="field" id="fName" placeholder="Full name">
+      </div>
+      <div class="frow">
+        <input class="field" id="fAge" placeholder="Age (yrs)" type="number" min="1" max="120" style="flex:0 0 100px">
+        <div class="seg" style="flex:1">
+          <button class="seg-btn active" data-sex="M" onclick="setSeg(this,'sex')">Male</button>
+          <button class="seg-btn" data-sex="F" onclick="setSeg(this,'sex')">Female</button>
+          <button class="seg-btn" data-sex="O" onclick="setSeg(this,'sex')">Other</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTHROPOMETRY -->
+    <div class="form-section">
+      <span class="flabel">Anthropometry</span>
+      <div class="frow">
+        <input class="field" id="fWeight" placeholder="Weight (kg)" type="number" step="0.1">
+        <input class="field" id="fHeight" placeholder="Height (cm)" type="number" step="0.1">
+      </div>
+      <div class="frow">
+        <input class="field" id="fWaist" placeholder="Waist (cm)" type="number" step="0.1">
+        <input class="field" id="fGrip" placeholder="Grip strength (kg)" type="number" step="0.1">
+      </div>
+      <div class="info-text" id="bmiDisplay">BMI: —</div>
+    </div>
+
+    <button class="btn-primary" id="btnEnrolNext" onclick="enrolNext()" disabled>Next: Clinical Data →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 1 — CLINICAL (CLD-specific or minimal for Control)
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenClinical">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title" id="clinTitle">Clinical Data</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="step-bar">
+    <div class="step-pip done" id="cpip0"></div>
+    <div class="step-pip active" id="cpip1"></div>
+    <div class="step-pip" id="cpip2"></div>
+    <div class="step-pip" id="cpip3"></div>
+    <div class="step-pip" id="cpip4"></div>
+  </div>
+  <div class="form-wrap" id="clinFormWrap">
+    <!-- Filled dynamically based on group -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 2 — LABS
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenLabs">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title">Laboratory Data</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="step-bar">
+    <div class="step-pip done"></div>
+    <div class="step-pip done"></div>
+    <div class="step-pip active"></div>
+    <div class="step-pip" id="lpip3"></div>
+    <div class="step-pip" id="lpip4"></div>
+  </div>
+  <div class="form-wrap">
+    <div class="form-section">
+      <span class="flabel">CBC</span>
+      <div class="frow">
+        <input class="field" id="lHb" placeholder="Hb (g/dL)" type="number" step="0.1">
+        <input class="field" id="lTLC" placeholder="TLC (×10³/µL)" type="number" step="0.1">
+        <input class="field" id="lPlt" placeholder="Platelets (×10³)" type="number">
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Liver function tests</span>
+      <div class="frow">
+        <input class="field" id="lTBili" placeholder="T.Bili (mg/dL)" type="number" step="0.1">
+        <input class="field" id="lDBili" placeholder="D.Bili (mg/dL)" type="number" step="0.1">
+      </div>
+      <div class="frow">
+        <input class="field" id="lAST" placeholder="AST (U/L)" type="number">
+        <input class="field" id="lALT" placeholder="ALT (U/L)" type="number">
+        <input class="field" id="lALP" placeholder="ALP (U/L)" type="number">
+      </div>
+      <div class="frow">
+        <input class="field" id="lGGT" placeholder="GGT (U/L)" type="number">
+        <input class="field" id="lAlb" placeholder="Albumin (g/dL)" type="number" step="0.1">
+        <input class="field" id="lTP" placeholder="T.Protein (g/dL)" type="number" step="0.1">
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Coagulation</span>
+      <div class="frow">
+        <input class="field" id="lPT" placeholder="PT (sec)" type="number" step="0.1">
+        <input class="field" id="lINR" placeholder="INR" type="number" step="0.01">
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Renal + Electrolytes</span>
+      <div class="frow">
+        <input class="field" id="lCr" placeholder="Creatinine (mg/dL)" type="number" step="0.01">
+        <input class="field" id="lNa" placeholder="Na (mEq/L)" type="number" step="0.1">
+        <input class="field" id="lK" placeholder="K (mEq/L)" type="number" step="0.1">
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Metabolic</span>
+      <div class="frow">
+        <input class="field" id="lFBG" placeholder="Fasting glucose (mg/dL)" type="number">
+        <input class="field" id="lHbA1c" placeholder="HbA1c (%)" type="number" step="0.1">
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Serology</span>
+      <div class="frow">
+        <div class="seg" style="flex:1">
+          <button class="seg-btn active" data-val="Neg" onclick="setSeg(this,'hbsag')">HBsAg –</button>
+          <button class="seg-btn" data-val="Pos" onclick="setSeg(this,'hbsag')">HBsAg +</button>
+          <button class="seg-btn" data-val="NA" onclick="setSeg(this,'hbsag')">N/A</button>
+        </div>
+        <div class="seg" style="flex:1">
+          <button class="seg-btn active" data-val="Neg" onclick="setSeg(this,'hcv')">Anti-HCV –</button>
+          <button class="seg-btn" data-val="Pos" onclick="setSeg(this,'hcv')">Anti-HCV +</button>
+          <button class="seg-btn" data-val="NA" onclick="setSeg(this,'hcv')">N/A</button>
+        </div>
+      </div>
+    </div>
+    <div id="meldDisplay" class="info-text" style="margin-bottom:10px"></div>
+    <button class="btn-primary" id="btnLabsNext" onclick="labsNext()">Next →</button>
+    <button class="btn-secondary" onclick="skipTo(3)" style="color:var(--amber);border-color:rgba(240,168,50,.3)">Skip for now →</button>
+    <button class="btn-secondary" onclick="navTo(1)">← Back</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 3 — ENDOSCOPY (CLD only; skipped for controls)
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenEndo">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title">Endoscopy Data</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="step-bar">
+    <div class="step-pip done"></div>
+    <div class="step-pip done"></div>
+    <div class="step-pip done"></div>
+    <div class="step-pip active"></div>
+    <div class="step-pip" id="epip4"></div>
+  </div>
+  <div class="form-wrap">
+
+    <div class="de-card">
+      <div class="de-title">Oesophageal varices</div>
+      <span class="flabel">Grade</span>
+      <div class="opt-grid" id="optEV">
+        <button class="opt-btn" onclick="pick(this,'ev','Absent')">Absent</button>
+        <button class="opt-btn" onclick="pick(this,'ev','Small')">Small</button>
+        <button class="opt-btn" onclick="pick(this,'ev','Large')">Large</button>
+      </div>
+      <span class="flabel" style="margin-top:10px">Red colour signs</span>
+      <div class="opt-grid" id="optRCS">
+        <button class="opt-btn" onclick="pick(this,'rcs','Absent')">Absent</button>
+        <button class="opt-btn" onclick="pick(this,'rcs','Present')">Present</button>
+      </div>
+    </div>
+
+    <div class="de-card">
+      <div class="de-title">Gastric varices (Sarin)</div>
+      <div class="opt-grid" id="optGV">
+        <button class="opt-btn" onclick="pick(this,'gv','None')">None</button>
+        <button class="opt-btn" onclick="pick(this,'gv','GOV1')">GOV1</button>
+        <button class="opt-btn" onclick="pick(this,'gv','GOV2')">GOV2</button>
+        <button class="opt-btn" onclick="pick(this,'gv','IGV1')">IGV1</button>
+        <button class="opt-btn" onclick="pick(this,'gv','IGV2')">IGV2</button>
+      </div>
+    </div>
+
+    <div class="de-card">
+      <div class="de-title">Portal hypertensive gastropathy</div>
+      <div class="opt-grid" id="optPHG">
+        <button class="opt-btn" onclick="pick(this,'phg','None')">None</button>
+        <button class="opt-btn" onclick="pick(this,'phg','Mild')">Mild</button>
+        <button class="opt-btn" onclick="pick(this,'phg','Severe')">Severe</button>
+      </div>
+    </div>
+
+    <div class="de-card" id="vntResultCard">
+      <div class="de-title">VNT classification (auto-derived)</div>
+      <div id="vntDisplay" style="font-family:var(--mono);font-size:13px;color:var(--muted);padding:6px 0;line-height:1.7">
+        Enter varix data above to auto-classify
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">
+        <b style="color:var(--text)">VNT+ criteria:</b> Large EV &nbsp;OR&nbsp; any EV with red colour signs &nbsp;OR&nbsp; any gastric varices
+      </div>
+    </div>
+
+    <div class="de-card">
+      <div class="de-title">Prior / planned treatment</div>
+      <span class="flabel">Previous treatment received</span>
+      <div class="opt-grid">
+        ${['None','Post-EVL','Post-sclerotherapy','Post-glue injection'].map(m=>`<button class="opt-btn" onclick="toggleMulti(this,'priorTx','${m}')">${m}</button>`).join('')}
+      </div>
+      <span class="flabel" style="margin-top:10px">Current / planned treatment</span>
+      <div class="opt-grid" id="optPlan">
+        <button class="opt-btn" onclick="togglePlan(this,'EVL')">EVL</button>
+        <button class="opt-btn" onclick="togglePlan(this,'NSBB')">NSBB</button>
+        <button class="opt-btn" onclick="togglePlan(this,'EVL + NSBB')">EVL + NSBB</button>
+        <button class="opt-btn" onclick="togglePlan(this,'Surveillance only')">Surveillance only</button>
+        <button class="opt-btn" onclick="togglePlan(this,'No intervention')">No intervention</button>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-top:4px">
+      <span class="flabel">Endoscopist's notes</span>
+      <textarea class="field" id="endoNotes" placeholder="Additional findings, procedure notes..."></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="endoNext()">Next: PPG Recording →</button>
+    <button class="btn-secondary" onclick="skipTo(4)" style="color:var(--amber);border-color:rgba(240,168,50,.3)">Skip for now →</button>
+    <button class="btn-secondary" onclick="navTo(2)">← Back</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 4 — PPG RECORDING
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenRecord">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title">PPG Recording</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="step-bar">
+    <div class="step-pip done"></div>
+    <div class="step-pip done"></div>
+    <div class="step-pip done"></div>
+    <div class="step-pip done"></div>
+    <div class="step-pip active"></div>
+  </div>
+
+  <div class="patient-banner">
+    <div>
+      <div class="patient-name" id="bannerName">—</div>
+      <div class="patient-meta" id="bannerMeta">—</div>
+    </div>
+    <span class="group-pill" id="bannerPill">—</span>
+  </div>
+
+  <div class="sensor-wrap">
+    <div class="sensor-ring" id="sensorRing">
+      <div class="sensor-icon">☝️</div>
+      <div class="sensor-hint" id="sensorHint">Tap Start, then cover rear camera + flash completely</div>
+    </div>
+  </div>
+
+  <div class="quality-row">
+    <div class="quality-track"><div class="quality-fill" id="qualFill"></div></div>
+    <div class="quality-label" id="qualLabel">waiting</div>
+  </div>
+
+  <div class="wave-card">
+    <div class="wave-label">PPG · RED CHANNEL (FILTERED)</div>
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <div class="metrics-strip">
+    <div class="metric-cell"><div class="metric-val dim" id="mHR">--</div><div class="metric-lbl">HR·bpm</div></div>
+    <div class="metric-cell"><div class="metric-val dim" id="mRMSSD">--</div><div class="metric-lbl">RMSSD·ms</div></div>
+    <div class="metric-cell"><div class="metric-val dim" id="mPI">--</div><div class="metric-lbl">PI·%</div></div>
+    <div class="metric-cell"><div class="metric-val dim" id="mSNR">--</div><div class="metric-lbl">SNR·dB</div></div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-row"><span>Recording</span><span id="progTime">0 / 30s</span></div>
+    <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+  </div>
+
+  <div class="status-line" id="statusLine">Tap Start to begin</div>
+  <div class="rec-controls">
+    <button class="btn-rec btn-start" id="btnStart" onclick="startRecording()">▶ Start</button>
+    <button class="btn-rec btn-stop"  id="btnStop"  onclick="stopRecording(false)" disabled>■ Stop</button>
+    <button class="btn-rec btn-cancel" onclick="cancelRecord()">✕</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 5 — RESULTS
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenResults">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title">Results</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="results-wrap">
+    <div class="results-header">
+      <div class="results-name" id="resName">—</div>
+      <div class="results-sub" id="resSub">—</div>
+    </div>
+    <!-- PPG WAVEFORM -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px">
+      <div class="rc-label">PPG waveform (filtered · settled segment)</div>
+      <canvas class="wave-result" id="resWaveCanvas" style="height:80px"></canvas>
+    </div>
+    <!-- 6 RAW PPG INDICES -->
+    <div style="margin-bottom:6px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">Cardiac &amp; vascular indices</div>
+    <div class="results-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:8px">
+      <div class="result-card">
+        <div class="rc-label">Heart rate</div><div class="rc-val" id="resHR">--</div><div class="rc-unit">bpm</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Compensatory tachycardia &uarr; in portal HTN</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">Mean RR</div><div class="rc-val" id="resMeanRR">--</div><div class="rc-unit">ms</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Shorter RR = faster HR</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">Perf. index</div><div class="rc-val" id="resPI">--</div><div class="rc-unit">AC/DC %</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Peripheral vasodilation proxy</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">RMSSD</div><div class="rc-val" id="resRMSSD">--</div><div class="rc-sub" id="resSDNN"></div><div class="rc-unit">ms HRV</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Autonomic tone; non-linear in CLD</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">Aug. index</div><div class="rc-val" id="resAI">--</div><div class="rc-unit">%</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Low AI = low SVR = vasodilated</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">Dicrotic notch</div><div class="rc-val" id="resDN">--</div><div class="rc-unit">% RR</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Delayed = low peripheral resistance</div>
+      </div>
+    </div>
+    <div class="results-grid" style="grid-template-columns:1fr;margin-bottom:14px">
+      <div class="result-card">
+        <div class="rc-label">Upstroke slope</div><div class="rc-val" id="resUS">--</div><div class="rc-unit">amplitude/sample</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">Steeper = higher contractility / lower peripheral resistance</div>
+      </div>
+    </div>
+    <!-- DERIVED BINARY OUTCOMES -->
+    <div id="resBinarySection" style="display:none">
+      <div style="margin-bottom:6px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">Study endpoints (from endoscopy)</div>
+      <div class="results-grid" style="margin-bottom:8px">
+        <div class="result-card">
+          <div class="rc-label">Model 1</div><div class="rc-val" id="resOutcome1" style="font-size:15px">--</div><div class="rc-unit">Varix vs No Varix</div>
+        </div>
+<div class="result-card full">
+          <div class="rc-label">Model 3</div><div class="rc-val" id="resOutcome3" style="font-size:15px">--</div><div class="rc-unit">VNT+ (needs treatment) vs VNT−</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+        <b style="color:var(--text)">Analysis note:</b> PPG indices stored as continuous variables. Binary outcomes above are derived from endoscopy entry and serve as dependent variables in logistic regression. No composite score is assumed &mdash; weightings will be derived from your cohort data.
+      </div>
+    </div>
+    <div class="export-row">
+      <button class="btn-export" onclick="exportCSV()">⬇ Raw CSV</button>
+      <button class="btn-export" onclick="exportJSON()">⬇ JSON</button>
+    </div>
+    <button class="btn-new" onclick="newSession()">+ New Session</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 6 — SESSIONS
+═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screenSessions">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PhysioScan</div>
+    <div class="topbar-title">Sessions</div>
+    <div class="topbar-right" id="sessionCount"></div>
+  </div>
+  <div class="db-actions">
+    <button class="btn-export" style="flex:1" onclick="exportMasterCSV()">⬇ All sessions · CSV</button>
+    <button class="btn-export" style="flex:1" onclick="backupDB()">⬇ Backup</button>
+    <button class="btn-export" style="flex:1;color:var(--amber);border-color:rgba(240,168,50,.3)" onclick="document.getElementById('restoreInput').click()">⬆ Restore</button>
+  </div>
+  <input type="file" id="restoreInput" accept=".json" style="display:none" onchange="restoreDB(event)">
+  <div style="padding:5px 20px 0;font-size:11px;color:var(--muted)">Export CSV before clearing browser data. Backup/Restore to move between devices.</div>
+  <div class="session-list" id="sessionList"><div class="session-empty">No sessions yet.</div></div>
+</div>
+
+<!-- ══ NAV BAR ══ -->
+<nav class="navbar">
+  <button class="nav-btn active" id="nav0" onclick="navTo(0)"><span class="nav-icon">＋</span><span class="nav-label">NEW</span></button>
+  <button class="nav-btn" id="nav1" onclick="navTo(1)"><span class="nav-icon">📋</span><span class="nav-label">CLINICAL</span></button>
+  <button class="nav-btn" id="nav2" onclick="navTo(2)"><span class="nav-icon">🧪</span><span class="nav-label">LABS</span></button>
+  <button class="nav-btn" id="nav3" onclick="navTo(3)"><span class="nav-icon">🔭</span><span class="nav-label">ENDO</span></button>
+  <button class="nav-btn" id="nav4" onclick="navTo(4)"><span class="nav-icon">⬤</span><span class="nav-label">PPG</span></button>
+  <button class="nav-btn" id="nav5" onclick="navTo(5)"><span class="nav-icon">◈</span><span class="nav-label">RESULTS</span></button>
+  <button class="nav-btn" id="nav6" onclick="navTo(6)"><span class="nav-icon">≡</span><span class="nav-label">ALL</span></button>
+</nav>
+
+<script>
+// ══ STATE ═════════════════════════════════════════════════════════════════════
+const RECORD_SECS=30, SETTLE_SECS=4, WAVE_WIN=300;
+const SCREENS=['screenEnrol','screenClinical','screenLabs','screenEndo','screenRecord','screenResults','screenSessions'];
+
+let sessions = JSON.parse(localStorage.getItem('big_pphs_v3')||'[]');
+let cur = {}; // current session being built
+let selectedGroup = null;
+let selectedSex = 'M';
+let segState = { sex:'M', hbsag:'Neg', hcv:'Neg' };
+let endoPicks = { ev:null, rcs:null, gv:null, phg:null, vnt:null };
+let endoPlans = new Set();
+let stream=null, animFrame=null, recording=false, startTime=null;
+let rawData=[], waveBuffer=[];
+let lastResult=null;
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function navTo(idx) {
+  SCREENS.forEach((s,i)=>{
+    document.getElementById(s).classList.toggle('active', i===idx);
+    const nb=document.getElementById('nav'+i);
+    if(nb) nb.classList.toggle('active', i===idx);
+  });
+  if(idx===6) renderSessions();
+}
+
+// ── GROUP ─────────────────────────────────────────────────────────────────────
+function setGroup(g) {
+  selectedGroup = g;
+  document.getElementById('grpCLD').className = 'grp-btn' + (g==='CLD'?' active-cld':'');
+  document.getElementById('grpCTL').className = 'grp-btn' + (g==='CTL'?' active-ctl':'');
+  // Generate study ID
+  const prefix = g==='CLD'?'CLD':'CTL';
+  const n = sessions.filter(s=>s.group===g).length + 1;
+  document.getElementById('fStudyId').value = `BIG-PPHS-${prefix}-${String(n).padStart(3,'0')}`;
+  checkEnrolReady();
+}
+
+function checkEnrolReady() {
+  const ok = selectedGroup && document.getElementById('fName').value.trim() && document.getElementById('fAge').value;
+  document.getElementById('btnEnrolNext').disabled = !ok;
+}
+['fName','fAge','fMRN'].forEach(id=>document.getElementById(id).addEventListener('input',checkEnrolReady));
+
+// BMI calc
+['fWeight','fHeight'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  const w=+document.getElementById('fWeight').value, h=+document.getElementById('fHeight').value/100;
+  document.getElementById('bmiDisplay').textContent = (w&&h) ? `BMI: ${(w/(h*h)).toFixed(1)} kg/m²` : 'BMI: —';
+}));
+
+// ── SEG CONTROLS ──────────────────────────────────────────────────────────────
+function setSeg(btn, key) {
+  const parent = btn.closest('.seg');
+  parent.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  segState[key] = btn.dataset[key] || btn.dataset.val || btn.dataset.sex;
+}
+
+// ── ENROL NEXT ────────────────────────────────────────────────────────────────
+function skipTo(screen) {
+  // Save whatever clinical/lab/endo data is already filled before skipping
+  saveDraftState();
+  updateRecordBanner();
+  if(screen===4) { navTo(4); }
+  else if(screen===3 && cur.group==='CTL') { navTo(4); }
+  else navTo(screen);
+}
+
+function saveDraftState() {
+  // Persist cur to sessions as a draft (upsert by studyId)
+  if(!cur.studyId) return;
+  const existing = sessions.findIndex(s => s.studyId === cur.studyId);
+  const draft = { ...cur, timestamp: cur.timestamp||new Date().toISOString(),
+                  ppg: cur.ppg||null, isDraft: !cur.ppg };
+  if(existing >= 0) sessions[existing] = draft;
+  else sessions.unshift(draft);
+  localStorage.setItem('big_pphs_v3', JSON.stringify(sessions.slice(0,500)));
+}
+
+function enrolNext() {
+  const w=+document.getElementById('fWeight').value, h=+document.getElementById('fHeight').value/100;
+  cur.group = selectedGroup;
+  cur.studyId = document.getElementById('fStudyId').value;
+  cur.mrn = document.getElementById('fMRN').value.trim();
+  cur.name = document.getElementById('fName').value.trim();
+  cur.age = document.getElementById('fAge').value;
+  cur.sex = segState.sex;
+  cur.weight = w||null; cur.height = h*100||null;
+  cur.bmi = (w&&h) ? +(w/(h*h)).toFixed(1) : null;
+  cur.waist = +document.getElementById('fWaist').value||null;
+  cur.grip = +document.getElementById('fGrip').value||null;
+  cur.timestamp = cur.timestamp || new Date().toISOString();
+  saveDraftState();
+  buildClinicalForm();
+  navTo(1);
+}
+
+// ── CLINICAL FORM (dynamic) ───────────────────────────────────────────────────
+function buildClinicalForm() {
+  const wrap = document.getElementById('clinFormWrap');
+  document.getElementById('clinTitle').textContent = cur.group==='CLD' ? 'Clinical Data — CLD' : 'Clinical Data — Control';
+
+  if (cur.group === 'CTL') {
+    wrap.innerHTML = `
+      <div class="form-section">
+        <span class="flabel">Reason for visit / notes</span>
+        <textarea class="field" id="cCtlNote" placeholder="Attending for..."></textarea>
+      </div>
+      <div class="form-section">
+        <span class="flabel">Current medications</span>
+        <textarea class="field" id="cMeds" placeholder="None / list if any"></textarea>
+      </div>
+      <button class="btn-primary" onclick="clinNext()">Next: Labs →</button>
+      <button class="btn-secondary" onclick="skipTo(2)" style="color:var(--amber);border-color:rgba(240,168,50,.3)">Skip for now →</button>
+      <button class="btn-secondary" onclick="navTo(0)">← Back</button>`;
+    return;
+  }
+
+  // CLD form
+  wrap.innerHTML = `
+    <div class="form-section">
+      <span class="flabel">Aetiology of liver disease</span>
+      <div class="opt-grid" id="optAetio">
+        ${['Alcohol-related LD','HBV cirrhosis','HCV cirrhosis','MASLD/NASH cirrhosis','Cryptogenic cirrhosis','Autoimmune hepatitis (AIH)',"Wilson's disease"].map(a=>`<button class="opt-btn" onclick="pick(this,'aetio','${a}')">${a}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Decompensation status</span>
+      <div class="opt-grid" id="optDecomp">
+        <button class="opt-btn" onclick="pick(this,'decomp','Compensated')">Compensated</button>
+        <button class="opt-btn" onclick="pick(this,'decomp','Decompensated')">Decompensated</button>
+      </div>
+    </div>
+    <div class="form-section" id="decompDetails" style="display:none">
+      <span class="flabel">Decompensation events (select all)</span>
+      <div class="opt-grid">
+        ${['Ascites','Variceal bleed','Hepatic encephalopathy','SBP','HRS'].map(d=>`<button class="opt-btn" onclick="toggleMulti(this,'decompEvent','${d}')">${d}</button>`).join('')}
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Ascites (current)</span>
+      <div class="opt-grid" id="optAscites">
+        <button class="opt-btn" onclick="pick(this,'ascites','None')">None</button>
+        <button class="opt-btn" onclick="pick(this,'ascites','Mild')">Mild</button>
+        <button class="opt-btn" onclick="pick(this,'ascites','Moderate')">Moderate</button>
+        <button class="opt-btn" onclick="pick(this,'ascites','Tense')">Tense</button>
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Hepatic encephalopathy (current)</span>
+      <div class="opt-grid" id="optHE">
+        <button class="opt-btn" onclick="pick(this,'he','None')">None</button>
+        <button class="opt-btn" onclick="pick(this,'he','MHE')">MHE</button>
+        <button class="opt-btn" onclick="pick(this,'he','Grade I')">Grade I</button>
+        <button class="opt-btn" onclick="pick(this,'he','Grade II')">Grade II</button>
+        <button class="opt-btn" onclick="pick(this,'he','Grade III')">Grade III</button>
+      </div>
+    </div>
+    <div class="form-section">
+      <span class="flabel">Current medications</span>
+      <div class="opt-grid">
+        ${['NSBB (propranolol)','NSBB (carvedilol)','Diuretics','Rifaximin','Lactulose','Antivirals (HBV)','Antivirals (HCV)','None'].map(m=>`<button class="opt-btn" onclick="toggleMulti(this,'meds','${m}')">${m}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn-primary" onclick="clinNext()">Next: Labs →</button>
+    <button class="btn-secondary" onclick="navTo(0)">← Back</button>`;
+}
+
+// show decompensation events when decompensated selected
+const origPick = window.pick;
+// ── PICK (single select option button) ───────────────────────────────────────
+const cldPicks = {};
+function pick(btn, key, val) {
+  const grid = btn.closest('.opt-grid');
+  if(grid) grid.querySelectorAll('.opt-btn').forEach(b=>{b.classList.remove('sel','sel-red','sel-amber')});
+  btn.classList.add('sel');
+  if(['ev','rcs','gv','phg'].includes(key)) { endoPicks[key]=val; updateVNTDisplay(); }
+  else cldPicks[key]=val;
+  if(key==='decomp') {
+    const dd=document.getElementById('decompDetails');
+    if(dd) dd.style.display = val==='Decompensated'?'block':'none';
+  }
+}
+
+function updateVNTDisplay() {
+  const el=document.getElementById('vntDisplay'); if(!el) return;
+  const ev=endoPicks.ev||'', rcs=endoPicks.rcs||'', gv=endoPicks.gv||'';
+  if(!ev && !gv) { el.textContent='Enter varix data above to auto-classify'; el.style.color='var(--muted)'; return; }
+  const vntPos = ev==='Large' || rcs==='Present' || (gv && gv!=='None');
+  if(vntPos) {
+    const reasons=[];
+    if(ev==='Large') reasons.push('Large EV');
+    if(rcs==='Present') reasons.push('Red colour signs');
+    if(gv&&gv!=='None') reasons.push('Gastric varices ('+gv+')');
+    el.innerHTML='<span style="color:var(--red);font-weight:600">VNT+ (needs treatment)</span><br>Criteria met: '+reasons.join(' · ');
+  } else {
+    el.innerHTML='<span style="color:var(--teal);font-weight:600">VNT− (treatment not indicated)</span><br>Small/absent EV, no RCS, no GV';
+  }
+}
+
+// ── MULTI TOGGLE ──────────────────────────────────────────────────────────────
+const multiState = {};
+function toggleMulti(btn, key, val) {
+  if(!multiState[key]) multiState[key]=new Set();
+  if(multiState[key].has(val)) { multiState[key].delete(val); btn.classList.remove('sel'); }
+  else { multiState[key].add(val); btn.classList.add('sel'); }
+}
+
+// Plan toggle (endoscopy)
+function togglePlan(btn, val) {
+  if(endoPlans.has(val)) { endoPlans.delete(val); btn.classList.remove('sel'); }
+  else { endoPlans.add(val); btn.classList.add('sel'); }
+}
+
+// ── CLIN NEXT ─────────────────────────────────────────────────────────────────
+function clinNext() {
+  if(cur.group==='CTL') {
+    cur.ctlNote = document.getElementById('cCtlNote')?.value||'';
+    cur.meds = document.getElementById('cMeds')?.value||'';
+  } else {
+    cur.aetio = cldPicks.aetio||'';
+    cur.decomp = cldPicks.decomp||'';
+    cur.decompEvents = multiState.decompEvent ? [...multiState.decompEvent] : [];
+    cur.ascites = cldPicks.ascites||'';
+    cur.he = cldPicks.he||'';
+    cur.meds = multiState.meds ? [...multiState.meds] : [];
+  }
+  navTo(2);
+}
+
+// ── LABS NEXT ─────────────────────────────────────────────────────────────────
+function labsNext() {
+  cur.labs = {
+    hb:   +document.getElementById('lHb').value||null,
+    tlc:  +document.getElementById('lTLC').value||null,
+    plt:  +document.getElementById('lPlt').value||null,
+    tbili:+document.getElementById('lTBili').value||null,
+    dbili:+document.getElementById('lDBili').value||null,
+    ast:  +document.getElementById('lAST').value||null,
+    alt:  +document.getElementById('lALT').value||null,
+    alp:  +document.getElementById('lALP').value||null,
+    ggt:  +document.getElementById('lGGT').value||null,
+    alb:  +document.getElementById('lAlb').value||null,
+    tp:   +document.getElementById('lTP').value||null,
+    pt:   +document.getElementById('lPT').value||null,
+    inr:  +document.getElementById('lINR').value||null,
+    cr:   +document.getElementById('lCr').value||null,
+    na:   +document.getElementById('lNa').value||null,
+    k:    +document.getElementById('lK').value||null,
+    fbg:  +document.getElementById('lFBG').value||null,
+    hba1c:+document.getElementById('lHbA1c').value||null,
+    hbsag: segState.hbsag,
+    hcv:   segState.hcv
+  };
+  // Calculate CTP & MELD if CLD
+  if(cur.group==='CLD') {
+    cur.ctp = calcCTP();
+    cur.meld = calcMELD();
+  }
+  if(cur.group==='CTL') navTo(4); // skip endoscopy
+  else navTo(3);
+}
+
+// Live MELD display
+['lTBili','lCr','lINR','lNa'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{
+  if(cur.group!=='CLD') return;
+  const t=+document.getElementById('lTBili').value, c=+document.getElementById('lCr').value,
+        i=+document.getElementById('lINR').value, n=+document.getElementById('lNa').value;
+  if(t&&c&&i) {
+    const m=calcMELDraw(t,c,i,n);
+    document.getElementById('meldDisplay').textContent=`MELD-Na: ${m} | CTP: calculating after save`;
+  }
+}));
+
+function calcMELDraw(t,c,i,na) {
+  const tc=Math.max(1,Math.min(c,4)), ti=Math.max(1,i), tt=Math.max(1,t);
+  let m=Math.round(3.78*Math.log(tt)+11.2*Math.log(ti)+9.57*Math.log(tc)+6.43);
+  if(na) { const tna=Math.min(137,Math.max(125,na)); m=m-na-140+0.32*(137-tna)-(0.24*(137-tna)*m); m=Math.round(m); }
+  return Math.max(6,m);
+}
+function calcMELD() {
+  const l=cur.labs; if(!l.tbili||!l.cr||!l.inr) return null;
+  return calcMELDraw(l.tbili,l.cr,l.inr,l.na);
+}
+function calcCTP() {
+  let s=0, l=cur.labs;
+  // Bilirubin
+  if(l.tbili<2) s+=1; else if(l.tbili<=3) s+=2; else s+=3;
+  // Albumin
+  if(l.alb>3.5) s+=1; else if(l.alb>=2.8) s+=2; else s+=3;
+  // INR
+  if(l.inr<1.7) s+=1; else if(l.inr<=2.3) s+=2; else s+=3;
+  // Ascites
+  const asc=cldPicks.ascites||'None';
+  if(asc==='None') s+=1; else if(asc==='Mild'||asc==='Moderate') s+=2; else s+=3;
+  // HE
+  const he=cldPicks.he||'None';
+  if(he==='None') s+=1; else if(he==='MHE'||he==='Grade I') s+=2; else s+=3;
+  return { score:s, cls: s<=6?'A':s<=9?'B':'C' };
+}
+
+// ── ENDO NEXT ─────────────────────────────────────────────────────────────────
+function endoNext() {
+  const ev=endoPicks.ev||'', rcs=endoPicks.rcs||'', gv=endoPicks.gv||'';
+  // VNT auto-classification
+  const vntPos = ev==='Large' || rcs==='Present' || (gv&&gv!=='None');
+  cur.endo = {
+    ev, rcs, gv,
+    phg:      endoPicks.phg||'',
+    vnt:      vntPos ? 'VNT+' : 'VNT-',
+    priorTx:  multiState.priorTx ? [...multiState.priorTx] : [],
+    plan:     [...endoPlans],
+    notes:    document.getElementById('endoNotes').value
+  };
+  saveDraftState();
+  updateRecordBanner();
+  navTo(4);
+}
+
+function updateRecordBanner() {
+  document.getElementById('bannerName').textContent = cur.name||'—';
+  document.getElementById('bannerMeta').textContent = `${cur.studyId} · ${cur.age}y · ${cur.sex}`;
+  const pill = document.getElementById('bannerPill');
+  pill.textContent = cur.group;
+  pill.className = 'group-pill ' + (cur.group==='CLD'?'cld':'ctl');
+}
+
+// ══ PPG ENGINE ════════════════════════════════════════════════════════════════
+const video=document.getElementById('video');
+const camCanvas=document.getElementById('camCanvas');
+const ctx=camCanvas.getContext('2d',{willReadFrequently:true});
+const waveCanvas=document.getElementById('waveCanvas');
+const wctx=waveCanvas.getContext('2d');
+
+async function startCamera() {
+  const cs=[
+    {video:{facingMode:{exact:'environment'},width:{ideal:320},height:{ideal:240},frameRate:{ideal:60,min:24}}},
+    {video:{facingMode:'environment',width:{ideal:320},height:{ideal:240},frameRate:{ideal:30}}},
+    {video:{width:{ideal:320},height:{ideal:240}}}
+  ];
+  for(const c of cs){try{stream=await navigator.mediaDevices.getUserMedia(c);break}catch{}}
+  if(!stream) throw new Error('Camera unavailable');
+  video.srcObject=stream;
+  await new Promise(r=>video.onloadedmetadata=r);
+  video.play();
+  camCanvas.width=video.videoWidth||320; camCanvas.height=video.videoHeight||240;
+  const track=stream.getVideoTracks()[0];
+  try{await track.applyConstraints({advanced:[{torch:true}]})}catch{}
+}
+function stopCamera(){
+  if(!stream) return;
+  try{stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:false}]})}catch{}
+  stream.getTracks().forEach(t=>t.stop()); stream=null;
+}
+
+function movingAvg(arr,w){
+  return arr.map((_,i)=>{const lo=Math.max(0,i-Math.floor(w/2)),hi=Math.min(arr.length,i+Math.floor(w/2)+1);let s=0;for(let j=lo;j<hi;j++)s+=arr[j];return s/(hi-lo)});
+}
+function bandpass(reds){const lp=movingAvg(reds,4),tr=movingAvg(reds,180);return lp.map((v,i)=>v-tr[i])}
+function detectPeaks(sig,minD=25,thr=0.35){
+  const mn=Math.min(...sig),mx=Math.max(...sig),t=mn+(mx-mn)*thr,peaks=[];
+  for(let i=2;i<sig.length-2;i++)
+    if(sig[i]>t&&sig[i]>=sig[i-1]&&sig[i]>=sig[i-2]&&sig[i]>=sig[i+1]&&sig[i]>=sig[i+2])
+      if(!peaks.length||(i-peaks[peaks.length-1])>=minD) peaks.push(i);
+  return peaks;
+}
+function computeHRV(rrMs){
+  if(rrMs.length<2) return{rmssd:null,sdnn:null,mean:null};
+  const mean=rrMs.reduce((a,b)=>a+b,0)/rrMs.length;
+  const sdnn=Math.sqrt(rrMs.reduce((a,v)=>a+(v-mean)**2,0)/rrMs.length);
+  const diffs=rrMs.slice(1).map((v,i)=>(v-rrMs[i])**2);
+  const rmssd=Math.sqrt(diffs.reduce((a,b)=>a+b,0)/diffs.length);
+  return{rmssd:+rmssd.toFixed(1),sdnn:+sdnn.toFixed(1),mean:+mean.toFixed(1)};
+}
+function computeWaveformFeatures(filt,peaks){
+  if(peaks.length<3) return null;
+  const use=peaks.slice(Math.floor(peaks.length*.33),Math.floor(peaks.length*.66));
+  if(use.length<2) return null;
+  let ai=[],us=[],dn=[];
+  for(const pk of use){
+    const rr=30,ws=Math.max(0,pk-rr),we=Math.min(filt.length-1,pk+rr);
+    const seg=filt.slice(ws,we+1),pkl=pk-ws;
+    if(pkl<5) continue;
+    let tb=pkl;
+    for(let i=pkl;i>=1;i--){if(seg[i]<seg[i-1]){tb=i;break}}
+    const ups=pkl-tb,upa=seg[pkl]-(seg[tb]||seg[0]);
+    if(ups>0) us.push(+(upa/ups).toFixed(3));
+    let ni=-1,nv=Infinity;
+    for(let i=pkl+2;i<Math.min(pkl+Math.floor(rr*.7),seg.length-2);i++)
+      if(seg[i]<seg[i-1]&&seg[i]<seg[i+1]&&seg[i]<nv){nv=seg[i];ni=i}
+    if(ni>0){
+      dn.push(+((ni-pkl)/rr*100).toFixed(1));
+      const pp=seg[pkl]-Math.min(...seg.slice(0,pkl+1));
+      if(pp>0) ai.push(+((seg[ni]-Math.min(...seg.slice(0,pkl+1)))/pp*100).toFixed(1));
+    }
+  }
+  const avg=a=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):null;
+  return{augIndex:avg(ai),upstrokeSlope:avg(us),dicroticNotch:avg(dn)};
+}
+function deriveOutcome1(s){
+  if(s.group==='CTL') return 0;
+  if(!s.endo||!s.endo.ev) return '';
+  return s.endo.ev!=='Absent'?1:0;
+}
+function deriveOutcome2(s){
+  if(s.group==='CTL'||!s.endo) return '';
+  return s.endo.vnt==='VNT+'?1:0;
+}
+
+function sampleFrame(ts){
+  if(!recording) return;
+  const elapsed=(ts-startTime)/1000;
+  if(elapsed>=RECORD_SECS){stopRecording(true);return}
+  ctx.drawImage(video,0,0,camCanvas.width,camCanvas.height);
+  const cx=Math.floor(camCanvas.width/2),cy=Math.floor(camCanvas.height/2);
+  const px=ctx.getImageData(cx-20,cy-20,40,40).data;
+  let r=0,g=0,b=0,n=0;
+  for(let i=0;i<px.length;i+=4){r+=px[i];g+=px[i+1];b+=px[i+2];n++}
+  r/=n;g/=n;b/=n;
+  rawData.push({t:+elapsed.toFixed(4),r:+r.toFixed(2),g:+g.toFixed(2),b:+b.toFixed(2)});
+  waveBuffer.push(r);
+  if(waveBuffer.length>WAVE_WIN) waveBuffer.shift();
+  drawWave(); updateQuality(r,g,b); updateLiveMetrics(elapsed); updateProgress(elapsed);
+  animFrame=requestAnimationFrame(sampleFrame);
+}
+
+function drawWave(){
+  const W=waveCanvas.width=waveCanvas.offsetWidth,H=waveCanvas.height=waveCanvas.offsetHeight||100;
+  wctx.clearRect(0,0,W,H);
+  if(waveBuffer.length<4) return;
+  const tr=movingAvg(waveBuffer,120),disp=waveBuffer.map((v,i)=>v-tr[i]);
+  const mn=Math.min(...disp),mx=Math.max(...disp),range=mx-mn||1;
+  wctx.strokeStyle='rgba(255,255,255,0.04)';wctx.lineWidth=1;
+  for(let i=1;i<4;i++){const y=H/4*i;wctx.beginPath();wctx.moveTo(0,y);wctx.lineTo(W,y);wctx.stroke()}
+  wctx.beginPath();wctx.strokeStyle='#2dd4a0';wctx.lineWidth=1.8;wctx.lineJoin='round';
+  for(let i=0;i<disp.length;i++){const x=(i/(disp.length-1))*W,y=H-((disp[i]-mn)/range)*(H-12)-6;i===0?wctx.moveTo(x,y):wctx.lineTo(x,y)}
+  wctx.stroke();
+}
+
+function updateQuality(r,g,b){
+  const dom=r/(g+b+1),qual=Math.min(100,Math.max(0,(dom-.5)*120));
+  const fill=document.getElementById('qualFill'),label=document.getElementById('qualLabel'),ring=document.getElementById('sensorRing'),hint=document.getElementById('sensorHint');
+  fill.style.width=qual+'%';
+  if(qual>60){fill.className='quality-fill';label.textContent='good';ring.className='sensor-ring contact';hint.textContent='Hold still — recording…'}
+  else if(qual>25){fill.className='quality-fill warn';label.textContent='weak';ring.className='sensor-ring';hint.textContent='Press more firmly'}
+  else{fill.className='quality-fill bad';label.textContent='none';ring.className='sensor-ring bad';hint.textContent='Cover all lenses + flash'}
+}
+
+function updateLiveMetrics(elapsed){
+  if(rawData.length<60) return;
+  const rec=rawData.slice(-90).map(d=>d.r),mn=Math.min(...rec),mx=Math.max(...rec);
+  const dc=rec.reduce((a,b)=>a+b,0)/rec.length,pi=dc>0?+((mx-mn)/dc*100).toFixed(1):0;
+  const snr=(mx-mn)>0?+(20*Math.log10((mx-mn)/2)).toFixed(1):0;
+  setM('mPI',pi,pi>.3);setM('mSNR',snr,snr>5);
+  if(rawData.length>=120){
+    const buf=rawData.slice(-180).map(d=>d.r),filt=bandpass(buf),peaks=detectPeaks(filt);
+    if(peaks.length>=3){
+      const ts2=rawData.slice(-180).map(d=>d.t);
+      const rrs=peaks.slice(1).map((p,i)=>(ts2[p]-ts2[peaks[i]])*1000).filter(r=>r>300&&r<1500);
+      if(rrs.length>=2){
+        const mr=rrs.reduce((a,b)=>a+b,0)/rrs.length,hr=Math.round(60000/mr);
+        const{rmssd}=computeHRV(rrs);
+        if(hr>=40&&hr<=180) setM('mHR',hr,true);
+        if(rmssd!=null) setM('mRMSSD',Math.round(rmssd),true);
+      }
+    }
+  }
+}
+function setM(id,val,ok){const el=document.getElementById(id);el.textContent=val;el.className='metric-val'+(ok?'':' dim')}
+function updateProgress(e){document.getElementById('progFill').style.width=Math.min(100,e/RECORD_SECS*100)+'%';document.getElementById('progTime').textContent=Math.floor(e)+' / 30s'}
+function setStatus(msg,cls){const el=document.getElementById('statusLine');el.textContent=msg;el.className='status-line '+cls}
+
+async function startRecording(){
+  updateRecordBanner();
+  setStatus('Starting camera…','');
+  document.getElementById('btnStart').disabled=true;
+  try{await startCamera()}catch(e){setStatus('Camera denied — allow permission','err');document.getElementById('btnStart').disabled=false;return}
+  rawData=[];waveBuffer=[];recording=true;startTime=null;
+  ['mHR','mRMSSD','mPI','mSNR'].forEach(id=>{const el=document.getElementById(id);el.textContent='--';el.className='metric-val dim'});
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('btnStop').disabled=false;
+  setStatus('Place fingertip over camera','ok');
+  animFrame=requestAnimationFrame(ts=>{startTime=ts;sampleFrame(ts)});
+}
+function stopRecording(auto){
+  recording=false;cancelAnimationFrame(animFrame);stopCamera();
+  document.getElementById('btnStop').disabled=true;document.getElementById('btnStart').disabled=false;
+  document.getElementById('sensorRing').className='sensor-ring';
+  document.getElementById('qualFill').style.width='0%';
+  if(rawData.length>60){setStatus((auto?'Complete · ':'Stopped · ')+rawData.length+' samples','ok');analyseAndSave()}
+  else setStatus('Not enough data','warn');
+}
+function cancelRecord(){if(recording) stopRecording(false);navTo(cur.group==='CTL'?2:3)}
+
+// ── ANALYSIS & SAVE ───────────────────────────────────────────────────────────
+function analyseAndSave(){
+  const settled=rawData.filter(d=>d.t>=SETTLE_SECS);
+  if(settled.length<60){navTo(5);return}
+  const reds=settled.map(d=>d.r),ts=settled.map(d=>d.t),filt=bandpass(reds),peaks=detectPeaks(filt);
+  let hr=null,rmssd=null,sdnn=null,meanRR=null,rrMs=[];
+  if(peaks.length>=3){
+    rrMs=peaks.slice(1).map((p,i)=>(ts[p]-ts[peaks[i]])*1000).filter(r=>r>300&&r<1500);
+    if(rrMs.length>=2){const hrv=computeHRV(rrMs);meanRR=hrv.mean;rmssd=hrv.rmssd;sdnn=hrv.sdnn;hr=Math.round(60000/meanRR);if(hr<30||hr>220)hr=null}
+  }
+  const mn=Math.min(...reds),mx=Math.max(...reds),dc=reds.reduce((a,b)=>a+b,0)/reds.length;
+  const pi=+((mx-mn)/dc*100).toFixed(2),snr=(mx-mn)>0?+(20*Math.log10((mx-mn)/2)).toFixed(1):null;
+  const features=computeWaveformFeatures(filt,peaks);
+  lastResult={
+    ...cur,
+    timestamp:new Date().toISOString(),
+    ppg:{ hr,rmssd,sdnn,meanRR:meanRR?+meanRR.toFixed(1):null,pi,snr,rrIntervals:rrMs,features,
+          duration:rawData[rawData.length-1].t,samples:rawData.length,
+          sampleRate:+(rawData.length/rawData[rawData.length-1].t).toFixed(1) },
+    rawData
+  };
+
+  // Save summary (no rawData) to localStorage
+  const summary={...lastResult,rawData:undefined,isDraft:false};
+  const existIdx=sessions.findIndex(s=>s.studyId===summary.studyId);
+  if(existIdx>=0) sessions[existIdx]=summary; else sessions.unshift(summary);
+  localStorage.setItem('big_pphs_v3',JSON.stringify(sessions.slice(0,500)));
+
+  displayResults(lastResult);
+  drawResultWave(filt,peaks);
+  navTo(5);
+}
+
+function displayResults(r){
+  document.getElementById('resName').textContent=r.name||'—';
+  document.getElementById('resSub').textContent=r.studyId+' · '+r.age+'y · '+r.sex+' · '+(r.timestamp?new Date(r.timestamp).toLocaleString():'—');
+  const p=r.ppg||{};
+  setR('resHR',p.hr); setR('resPI',p.pi); setR('resRMSSD',p.rmssd); setR('resMeanRR',p.meanRR);
+  document.getElementById('resSDNN').textContent=p.sdnn?'SDNN: '+p.sdnn+' ms':'';
+  if(p.features){ setR('resAI',p.features.augIndex); setR('resUS',p.features.upstrokeSlope); setR('resDN',p.features.dicroticNotch); }
+  const bs=document.getElementById('resBinarySection');
+  if(r.group==='CLD'){
+    bs.style.display='block';
+    const e=r.endo||{};
+    const hasVarix=e.ev&&e.ev!=='Absent';
+    setR('resOutcome1',hasVarix?'1 · Varix present':'0 · No varix');
+    setR('resOutcome3',e.vnt==='VNT+'?'1 · VNT+':'0 · VNT−');
+  } else {
+    bs.style.display='block';
+    setR('resOutcome1','0 · No varix');
+    setR('resOutcome2','N/A (control)');
+    setR('resOutcome3','N/A (control)');
+  }
+}
+
+function setR(id,val){document.getElementById(id).textContent=val!=null?val:'--'}
+
+function drawResultWave(filt,peaks){
+  const cv=document.getElementById('resWaveCanvas');
+  cv.width=cv.offsetWidth||320;cv.height=70;
+  const c=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const disp=filt.slice(-Math.min(filt.length,600));
+  const mn=Math.min(...disp),mx=Math.max(...disp),range=mx-mn||1;
+  c.strokeStyle='#1a7a5e';c.lineWidth=1;c.beginPath();
+  for(let i=0;i<disp.length;i++){const x=(i/(disp.length-1))*W,y=H-((disp[i]-mn)/range)*(H-8)-4;i===0?c.moveTo(x,y):c.lineTo(x,y)}
+  c.stroke();
+  const off=filt.length-disp.length;c.fillStyle='#2dd4a0';
+  for(const pk of peaks){const i=pk-off;if(i<0||i>=disp.length)continue;const x=(i/(disp.length-1))*W,y=H-((disp[i]-mn)/range)*(H-8)-4;c.beginPath();c.arc(x,y,2,0,Math.PI*2);c.fill()}
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportCSV(){
+  if(!lastResult?.rawData) return;
+  const hdr=`# BIG-PPHS Export\n# ${lastResult.studyId} · ${lastResult.name} · ${lastResult.timestamp}\ntime_s,red,green,blue\n`;
+  const rows=lastResult.rawData.map(d=>`${d.t},${d.r},${d.g},${d.b}`).join('\n');
+  dl(`BIG_PPHS_${lastResult.studyId}_raw.csv`,hdr+rows,'text/csv');
+}
+function exportJSON(){
+  if(!lastResult) return;
+  dl(`BIG_PPHS_${lastResult.studyId}.json`,JSON.stringify(lastResult,null,2),'application/json');
+}
+
+function exportMasterCSV(){
+  if(!sessions.length){alert('No sessions yet.');return}
+  const cols=[
+    'study_id','group','timestamp','mrn','name','age','sex','weight_kg','height_cm','bmi','waist_cm','grip_kg',
+    'aetio','decomp','decomp_events','ascites','he','meds',
+    'ctp_score','ctp_class','meld_na',
+    'hb','tlc','plt','tbili','dbili','ast','alt','alp','ggt','alb','tp','pt','inr','cr','na','k','fbg','hba1c','hbsag','hcv',
+    'ev','rcs','gv','phg','vnt','endo_plan','endo_notes',
+    'hr_bpm','rmssd_ms','sdnn_ms','mean_rr_ms','pi_pct','snr_db',
+    'aug_index','upstroke_slope','dicrotic_notch_pct',
+    'outcome1_varix_vs_none','outcome2_vnt_pos_vs_neg',
+    'ppg_duration_s','ppg_samples','ppg_sr_hz'
+  ];
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const rows=sessions.map(s=>{
+    const p=s.ppg||{},l=s.labs||{},e=s.endo||{},c=s.ctp||{};
+    return [
+      s.studyId,s.group,s.timestamp,s.mrn,s.name,s.age,s.sex,s.weight,s.height,s.bmi,s.waist,s.grip,
+      s.aetio,s.decomp,(s.decompEvents||[]).join('|'),(s.ascites||''),(s.he||''),(Array.isArray(s.meds)?s.meds.join('|'):s.meds||''),
+      c.score,c.cls,s.meld,
+      l.hb,l.tlc,l.plt,l.tbili,l.dbili,l.ast,l.alt,l.alp,l.ggt,l.alb,l.tp,l.pt,l.inr,l.cr,l.na,l.k,l.fbg,l.hba1c,l.hbsag,l.hcv,
+      e.ev,e.rcs,e.gv,e.phg,e.vnt,(e.plan||[]).join('|'),e.notes,
+      p.hr,p.rmssd,p.sdnn,p.meanRR,p.pi,p.snr,
+      p.features?.augIndex,p.features?.upstrokeSlope,p.features?.dicroticNotch,
+      deriveOutcome1(s),deriveOutcome2(s),
+      p.duration,p.samples,p.sampleRate
+    ].map(esc).join(',');
+  });
+  const stamp=new Date().toISOString().slice(0,10);
+  dl(`BIG_PPHS_AllSessions_${stamp}.csv`,cols.join(',')+'\n'+rows.join('\n'),'text/csv');
+}
+
+function backupDB(){
+  if(!sessions.length){alert('Nothing to back up.');return}
+  const stamp=new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
+  dl(`BIG_PPHS_Backup_${stamp}.json`,JSON.stringify({version:2,exported:new Date().toISOString(),sessions},null,2),'application/json');
+}
+function restoreDB(ev){
+  const file=ev.target.files[0];if(!file) return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const p=JSON.parse(e.target.result),inc=p.sessions??p;
+      if(!Array.isArray(inc)) throw new Error('bad');
+      const keys=new Set(sessions.map(s=>s.studyId+'|'+s.timestamp));
+      const neu=inc.filter(s=>!keys.has(s.studyId+'|'+s.timestamp));
+      sessions=[...neu,...sessions].slice(0,500);
+      localStorage.setItem('big_pphs_v3',JSON.stringify(sessions));
+      renderSessions();
+      alert(`Restored ${neu.length} new session(s). Total: ${sessions.length}.`);
+    }catch{alert('Invalid backup file.')}
+    ev.target.value='';
+  };
+  rd.readAsText(file);
+}
+function dl(name,content,mime){const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([content],{type:mime})),download:name});a.click();URL.revokeObjectURL(a.href)}
+
+// ── SESSIONS LIST ─────────────────────────────────────────────────────────────
+function renderSessions(){
+  const el=document.getElementById('sessionList');
+  const ct=document.getElementById('sessionCount');
+  if(ct) ct.textContent=sessions.length?sessions.length+' recorded':'';
+  if(!sessions.length){el.innerHTML='<div class="session-empty">No sessions recorded yet.</div>';return}
+  el.innerHTML=sessions.map((s,i)=>{
+    const p=s.ppg||{},c=s.ctp||{};
+    const gpill=`<span class="group-pill ${s.group==='CLD'?'cld':'ctl'}" style="font-size:9px;padding:2px 6px">${s.group}</span>`;
+    return `<div class="session-item" onclick="loadSession(${i})">
+      <div class="si-top"><div class="si-name">${s.name} ${gpill}</div><div class="si-time">${new Date(s.timestamp).toLocaleDateString()}</div></div>
+      <div class="si-row">
+        <div class="si-metric">${s.studyId}</div>
+        ${s.group==='CLD'?`<div class="si-metric">CTP-<b>${c.cls||'?'}</b> MELD <b>${s.meld||'?'}</b></div>`:''}
+        <div class="si-metric">HR <b>${p.hr??'--'}</b>bpm</div>
+        <div class="si-metric">PI <b>${p.pi??'--'}</b>%</div>
+        <div class="si-metric">AI <b>${p.features?.augIndex??'--'}</b>%</div>
+        <div class="si-metric">RMSSD <b>${p.rmssd??'--'}</b>ms</div>
+      </div>
+      ${s.group==='CLD'&&s.endo?`<div class="si-row"><div class="si-metric">EV: <b>${s.endo.ev||'—'}</b></div><div class="si-metric">RCS: <b>${s.endo.rcs||'—'}</b></div><div class="si-metric">VNT: <b>${s.endo.vnt||'—'}</b></div></div>`:''}
+      ${s.isDraft?'<div class="si-row"><div class="si-metric" style="color:var(--amber)">⚠ Draft — tap to continue</div></div>':''}
+    </div>`}).join('');
+}
+
+function loadSession(i){
+  const s=sessions[i];
+  // If draft (no PPG yet), load into cur and resume editing
+  if(s.isDraft || !s.ppg){
+    Object.assign(cur, s);
+    // Restore endo picks if endo data exists
+    if(s.endo){
+      endoPicks.ev=s.endo.ev||null; endoPicks.rcs=s.endo.rcs||null;
+      endoPicks.gv=s.endo.gv||null; endoPicks.phg=s.endo.phg||null;
+    }
+    updateRecordBanner();
+    // Go to earliest incomplete step
+    if(!s.labs||!s.labs.hb) navTo(2);
+    else if(!s.endo||!s.endo.ev) navTo(3);
+    else navTo(4);
+    return;
+  }
+  lastResult=s;
+  displayResults(s);
+  const cv=document.getElementById('resWaveCanvas');cv.width=cv.offsetWidth||320;cv.height=70;cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+  navTo(5);
+}
+function newSession(){
+  cur={};selectedGroup=null;
+  Object.assign(segState,{sex:'M',hbsag:'Neg',hcv:'Neg'});
+  Object.assign(endoPicks,{ev:null,rcs:null,gv:null,phg:null,vnt:null});
+  endoPlans.clear(); Object.keys(multiState).forEach(k=>multiState[k]=new Set());
+  ['fStudyId','fMRN','fName','fAge','fWeight','fHeight','fWaist','fGrip'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('bmiDisplay').textContent='BMI: —';
+  document.getElementById('grpCLD').className='grp-btn';
+  document.getElementById('grpCTL').className='grp-btn';
+  document.getElementById('btnEnrolNext').disabled=true;
+  navTo(0);
+}
+</script>
+</body>
+</html>
