@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Torch Diagnostics</title>
+<style>
+  body{font-family:sans-serif;background:#0a0a0a;color:#e0e0e0;padding:16px;max-width:480px;margin:0 auto}
+  h2{color:#2dd4a0;margin-bottom:4px;font-size:16px}
+  .card{background:#141414;border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:12px}
+  .log{font-family:monospace;font-size:12px;line-height:1.8;white-space:pre-wrap;word-break:break-all}
+  .ok{color:#2dd4a0}.err{color:#e8504a}.warn{color:#f0a832}.info{color:#5b9cf6}
+  button{width:100%;padding:14px;margin-bottom:8px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-teal{background:#2dd4a0;color:#060e0c}
+  .btn-red{background:#e8504a;color:#fff}
+  .btn-grey{background:#222;color:#ccc;border:1px solid #333}
+  video{width:100%;border-radius:8px;background:#000;display:block;margin-bottom:8px;max-height:160px;object-fit:cover}
+</style>
+</head>
+<body>
+<h1 style="font-size:18px;margin-bottom:16px;color:#2dd4a0">🔦 Torch Diagnostics</h1>
+
+<div class="card">
+  <h2>Step 1 — Start camera</h2>
+  <video id="vid" autoplay playsinline muted></video>
+  <button class="btn-teal" onclick="startCam()">Start rear camera</button>
+  <div class="log" id="logCam">Waiting…</div>
+</div>
+
+<div class="card">
+  <h2>Step 2 — Capabilities</h2>
+  <button class="btn-grey" onclick="showCaps()">Show track capabilities</button>
+  <div class="log" id="logCaps">Start camera first</div>
+</div>
+
+<div class="card">
+  <h2>Step 3 — Try torch methods</h2>
+  <button class="btn-teal" onclick="tryTorch1()">Method A: applyConstraints advanced</button>
+  <button class="btn-teal" onclick="tryTorch2()">Method B: applyConstraints direct</button>
+  <button class="btn-teal" onclick="tryTorch3()">Method C: ImageCapture torch</button>
+  <button class="btn-red"  onclick="torchOff()">Turn torch OFF (track.stop)</button>
+  <div class="log" id="logTorch">Start camera first</div>
+</div>
+
+<div class="card">
+  <h2>Step 4 — getUserMedia with torch</h2>
+  <button class="btn-grey" onclick="restartWithTorch()">Restart stream requesting torch upfront</button>
+  <div class="log" id="logRestart">—</div>
+</div>
+
+<script>
+let stream = null;
+let track  = null;
+
+function log(id, msg, cls=''){
+  const el = document.getElementById(id);
+  const ts = new Date().toLocaleTimeString();
+  el.innerHTML += `<span class="${cls}">[${ts}] ${msg}\n</span>`;
+}
+
+async function startCam(){
+  document.getElementById('logCam').innerHTML='';
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  log('logCam','Requesting rear camera…','info');
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{exact:'environment'}, width:{ideal:320}, height:{ideal:240}, frameRate:{ideal:30} }
+    });
+    track = stream.getVideoTracks()[0];
+    document.getElementById('vid').srcObject = stream;
+    log('logCam','✓ Camera started','ok');
+    log('logCam','Track label: '+track.label,'info');
+    log('logCam','Track readyState: '+track.readyState,'info');
+    const settings = track.getSettings?.();
+    if(settings) log('logCam','Settings: '+JSON.stringify(settings,null,1),'info');
+  } catch(e){
+    log('logCam','✗ Error: '+e.message,'err');
+  }
+}
+
+function showCaps(){
+  document.getElementById('logCaps').innerHTML='';
+  if(!track){ log('logCaps','No track — start camera first','err'); return; }
+  try{
+    const caps = track.getCapabilities?.();
+    if(!caps){ log('logCaps','getCapabilities() not supported on this browser','warn'); return; }
+    log('logCaps','Full capabilities:','info');
+    log('logCaps',JSON.stringify(caps,null,2),'info');
+    if(caps.torch !== undefined){
+      log('logCaps','✓ torch capability: '+JSON.stringify(caps.torch),'ok');
+    } else {
+      log('logCaps','✗ torch NOT listed in capabilities','err');
+    }
+  } catch(e){ log('logCaps','Error: '+e.message,'err'); }
+}
+
+async function tryTorch1(){
+  document.getElementById('logTorch').innerHTML='';
+  if(!track){ log('logTorch','No track','err'); return; }
+  log('logTorch','Method A: applyConstraints({advanced:[{torch:true}]})','info');
+  try{
+    await track.applyConstraints({ advanced:[{ torch:true }] });
+    log('logTorch','✓ Method A succeeded — torch should be ON','ok');
+  } catch(e){ log('logTorch','✗ Method A failed: '+e.message,'err'); }
+}
+
+async function tryTorch2(){
+  if(!track){ log('logTorch','No track','err'); return; }
+  log('logTorch','Method B: applyConstraints({torch:true})','info');
+  try{
+    await track.applyConstraints({ torch:true });
+    log('logTorch','✓ Method B succeeded','ok');
+  } catch(e){ log('logTorch','✗ Method B failed: '+e.message,'err'); }
+}
+
+async function tryTorch3(){
+  if(!track){ log('logTorch','No track','err'); return; }
+  log('logTorch','Method C: ImageCapture.setOptions (if available)','info');
+  if(!window.ImageCapture){ log('logTorch','✗ ImageCapture API not available in this browser','err'); return; }
+  try{
+    const ic = new ImageCapture(track);
+    await ic.setOptions?.({ torch:true });
+    log('logTorch','✓ Method C succeeded','ok');
+  } catch(e){ log('logTorch','✗ Method C failed: '+e.message,'err'); }
+}
+
+function torchOff(){
+  if(!stream){ log('logTorch','No stream','err'); return; }
+  stream.getTracks().forEach(t=>t.stop());
+  stream=null; track=null;
+  document.getElementById('vid').srcObject=null;
+  log('logTorch','Track stopped — torch should be OFF','warn');
+}
+
+async function restartWithTorch(){
+  document.getElementById('logRestart').innerHTML='';
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  log('logRestart','Requesting stream with torch in initial constraints…','info');
+
+  const attempts=[
+    {label:'torch in advanced[]', c:{video:{facingMode:{exact:'environment'},advanced:[{torch:true}]}}},
+    {label:'torch as top-level video prop', c:{video:{facingMode:{exact:'environment'},torch:true}}},
+    {label:'torch in advanced[] no facingMode', c:{video:{advanced:[{torch:true}]}}},
+  ];
+
+  for(const a of attempts){
+    log('logRestart','Trying: '+a.label,'info');
+    try{
+      stream = await navigator.mediaDevices.getUserMedia(a.c);
+      track  = stream.getVideoTracks()[0];
+      document.getElementById('vid').srcObject=stream;
+      log('logRestart','✓ Success with: '+a.label,'ok');
+      log('logRestart','Settings: '+JSON.stringify(track.getSettings?.()??{}),'info');
+      break;
+    } catch(e){
+      log('logRestart','✗ Failed ('+a.label+'): '+e.message,'err');
+      stream=null;
+    }
+  }
+}
+</script>
+</body>
+</html>
