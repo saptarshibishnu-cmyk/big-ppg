@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>BIG · PulseWave</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c10;--bg2:#0d1219;--bg3:#131a24;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --teal:#2dd4a0;--teal-dim:#1a7a5e;--amber:#f0a832;--red:#e8504a;
+  --text:#dde4ec;--muted:#5a6a7a;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:20px}
+.screen.active{display:flex}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border)}
+.brand{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.14em}
+.brand b{color:var(--teal);font-weight:500}
+.topbar-title{font-size:14px;font-weight:600}
+.topbar-right{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:60px;text-align:right}
+
+/* ── FORM ── */
+.form-wrap{padding:16px 20px;flex:1}
+.flabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:block}
+.frow{display:flex;gap:8px;margin-bottom:10px}
+.field{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px 14px;color:var(--text);font-family:var(--sans);font-size:15px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.field:focus{border-color:var(--teal-dim)}
+.field::placeholder{color:var(--muted)}
+select.field{cursor:pointer}
+option{background:#1a2230}
+
+/* Group buttons */
+
+
+.seg{display:flex;background:var(--bg3);border-radius:10px;padding:3px;border:1px solid var(--border)}
+.seg-btn{flex:1;padding:9px 6px;text-align:center;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;color:var(--muted);border:none;background:none;font-family:var(--sans)}
+.seg-btn.on{background:var(--teal-dim);color:var(--teal)}
+
+.btn-primary{width:100%;padding:16px;background:var(--teal);border:none;border-radius:12px;color:#060e0c;font-family:var(--sans);font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;margin-top:4px}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.3;cursor:not-allowed;transform:none}
+
+/* ── RECORD SCREEN ── */
+.patient-banner{margin:12px 20px 0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;justify-content:space-between;align-items:center}
+.pname{font-size:14px;font-weight:600}
+.pmeta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+
+/* Sensor */
+.sensor-wrap{display:flex;flex-direction:column;align-items:center;padding:14px 20px 10px}
+.sensor-ring{width:150px;height:150px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative;transition:border-color .3s;background:var(--bg2)}
+.sensor-ring.contact{border-color:var(--teal)}
+.sensor-ring.bad{border-color:var(--red)}
+.sensor-ring.contact::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid var(--teal);opacity:.25;animation:rp 1.4s ease-in-out infinite}
+@keyframes rp{0%,100%{transform:scale(1);opacity:.25}50%{transform:scale(1.04);opacity:.06}}
+.sensor-icon{font-size:36px;margin-bottom:4px}
+.sensor-hint{font-size:11px;color:var(--muted);text-align:center;padding:0 14px;line-height:1.5}
+
+.qual-row{width:100%;display:flex;align-items:center;gap:10px;padding:0 20px;margin-bottom:10px}
+.qual-track{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.qual-fill{height:100%;width:0%;border-radius:2px;transition:width .1s,background .3s;background:var(--teal)}
+.qual-fill.warn{background:var(--amber)}
+.qual-fill.bad{background:var(--red)}
+.qual-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:50px;text-align:right}
+
+/* Waveform */
+.wave-card{margin:0 20px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px}
+.wave-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:6px}
+#waveCanvas{width:100%;height:100px;display:block;border-radius:6px;background:var(--bg)}
+
+/* Live metrics */
+.live-strip{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 20px;margin-bottom:10px}
+.live-cell{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.live-val{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--teal);line-height:1;margin-bottom:2px}
+.live-val.dim{color:var(--bg3)}
+.live-lbl{font-size:9px;color:var(--muted);letter-spacing:.06em;font-family:var(--mono)}
+
+/* Progress */
+.prog-wrap{padding:0 20px;margin-bottom:10px}
+.prog-row{display:flex;justify-content:space-between;margin-bottom:4px}
+.prog-row span{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.prog-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;width:0%;background:var(--red);border-radius:2px;transition:width .5s linear}
+
+.status-line{font-size:12px;color:var(--muted);text-align:center;padding:0 20px;margin-bottom:10px;min-height:18px}
+.status-line.ok{color:var(--teal)}.status-line.warn{color:var(--amber)}.status-line.err{color:var(--red)}
+
+.rec-controls{display:flex;gap:8px;padding:0 20px}
+.btn-rec{flex:1;padding:14px;border:none;border-radius:12px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn-rec:active{transform:scale(.97)}
+.btn-rec:disabled{opacity:.25;cursor:not-allowed;transform:none}
+.btn-start{background:var(--teal);color:#060e0c}
+.btn-stop{background:var(--red);color:#fff}
+.btn-back{background:var(--bg3);color:var(--muted);flex:0 0 auto;padding:14px 14px}
+
+/* ── RESULTS ── */
+.results-wrap{padding:14px 20px;flex:1}
+.res-header{margin-bottom:14px}
+.res-name{font-size:18px;font-weight:600;margin-bottom:3px}
+.res-sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* Waveform annotated */
+.wave-annotated{width:100%;height:120px;background:var(--bg);border-radius:10px;display:block;margin-bottom:6px}
+.wave-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.wl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.wl-dot{width:8px;height:8px;border-radius:50%}
+
+/* Index grid */
+.idx-section-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin:14px 0 8px}
+.idx-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.idx-grid.three{grid-template-columns:1fr 1fr 1fr}
+.idx-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px}
+.idx-val{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--teal);line-height:1;margin-bottom:2px}
+.idx-unit{font-size:10px;color:var(--muted);margin-bottom:4px}
+.idx-name{font-size:11px;font-weight:600;color:var(--text);margin-bottom:3px}
+.idx-desc{font-size:10px;color:var(--muted);line-height:1.45}
+
+/* Correlation note box */
+.corr-box{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin:14px 0}
+.corr-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.corr-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.corr-row:last-child{border-bottom:none}
+.corr-param{font-size:12px;color:var(--text)}
+.corr-status{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:10px}
+.corr-status.pending{background:rgba(240,168,50,.12);color:var(--amber)}
+.corr-status.done{background:rgba(45,212,160,.12);color:var(--teal)}
+
+/* Export / nav buttons */
+.btn-export{flex:1;padding:12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg3);color:var(--text);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer}
+.btn-new{width:100%;padding:14px;margin-top:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer}
+
+/* ── SESSIONS ── */
+.db-actions{padding:10px 20px 0;display:flex;gap:8px}
+.sess-list{padding:10px 20px;flex:1}
+.sess-empty{text-align:center;padding:50px 20px;color:var(--muted);font-size:14px}
+.sess-item{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
+.sess-item:active{border-color:var(--teal-dim)}
+.si-top{display:flex;justify-content:space-between;margin-bottom:6px}
+.si-name{font-size:14px;font-weight:600}
+.si-date{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.si-vals{display:flex;gap:10px;flex-wrap:wrap}
+.si-v{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.si-v b{color:var(--teal);font-weight:500}
+
+/* ── NAV ── */
+.navbar{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:100}
+.screen{padding-bottom:calc(68px + max(8px,env(safe-area-inset-bottom)))}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 4px;background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--sans);-webkit-tap-highlight-color:transparent;transition:color .15s}
+.nav-btn.on{color:var(--teal)}
+.nav-icon{font-size:18px;line-height:1}
+.nav-lbl{font-size:9px;letter-spacing:.05em;font-weight:500}
+
+video,#camCanvas{display:none}
+</style>
+</head>
+<body>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="camCanvas"></canvas>
+
+<!-- ══ SCREEN 0 — PATIENT ══════════════════════════════════════════════════ -->
+<div class="screen active" id="s0">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PulseWave</div>
+    <div class="topbar-title">New Recording</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="form-wrap">
+
+    <div style="margin-bottom:14px">
+      <span class="flabel">Patient details</span>
+      <div class="frow">
+        <input class="field" id="fID" placeholder="Study ID / MRN" style="flex:0 0 130px">
+        <input class="field" id="fName" placeholder="Name">
+      </div>
+      <div class="frow">
+        <input class="field" id="fAge" placeholder="Age (yrs)" type="number" min="1" max="120" style="flex:0 0 100px">
+        <div class="seg" style="flex:1">
+          <button class="seg-btn on" data-v="M" onclick="setSex(this)">Male</button>
+          <button class="seg-btn" data-v="F" onclick="setSex(this)">Female</button>
+          <button class="seg-btn" data-v="O" onclick="setSex(this)">Other</button>
+        </div>
+      </div>
+      <div class="frow">
+        <input class="field" id="fNotes" placeholder="Notes (medications, CTP class…)">
+      </div>
+    </div>
+    <button class="btn-primary" id="btnGo" onclick="goRecord()" disabled>Begin Recording →</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN 1 — RECORD ═══════════════════════════════════════════════════ -->
+<div class="screen" id="s1">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PulseWave</div>
+    <div class="topbar-title">PPG Recording</div>
+    <div class="topbar-right"></div>
+  </div>
+
+  <!-- One-time finger placement tip -->
+  <div id="placeTip" style="margin:10px 20px 0;background:rgba(240,168,50,.08);border:1px solid rgba(240,168,50,.25);border-radius:10px;padding:11px 14px;display:flex;gap:10px;align-items:flex-start">
+    <div style="font-size:20px;line-height:1;flex-shrink:0">💡</div>
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--amber);margin-bottom:3px">Finger placement</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">Cover the <b style="color:var(--text)">entire camera cluster + flash LED</b> with the pad of your index finger. The flash LED is the small bright dot beside the lenses — occluding it is essential. The signal quality bar confirms good contact.</div>
+    </div>
+    <button onclick="document.getElementById('placeTip').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;padding:0;line-height:1">✕</button>
+  </div>
+
+  <div class="patient-banner">
+    <div>
+      <div class="pname" id="bName">—</div>
+      <div class="pmeta" id="bMeta">—</div>
+    </div>
+  </div>
+
+  <div class="sensor-wrap">
+    <div class="sensor-ring" id="sRing">
+      <div class="sensor-icon">☝️</div>
+      <div class="sensor-hint" id="sHint">Tap Start, then cover rear camera + flash completely</div>
+    </div>
+  </div>
+
+  <div class="qual-row">
+    <div class="qual-track"><div class="qual-fill" id="qFill"></div></div>
+    <div class="qual-lbl" id="qLbl">waiting</div>
+  </div>
+
+  <div class="wave-card">
+    <div class="wave-lbl">PPG · RED CHANNEL (FILTERED)</div>
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <div class="live-strip">
+    <div class="live-cell"><div class="live-val dim" id="lHR">--</div><div class="live-lbl">HR · bpm</div></div>
+    <div class="live-cell"><div class="live-val dim" id="lPI">--</div><div class="live-lbl">Perf. Index · %</div></div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-row"><span>Recording</span><span id="pTime">0 / 30s</span></div>
+    <div class="prog-track"><div class="prog-fill" id="pFill"></div></div>
+  </div>
+
+  <div class="status-line" id="statusLine">Tap Start to begin</div>
+
+  <div class="rec-controls">
+    <button class="btn-rec btn-start" id="btnStart" onclick="startRec()">▶ Start</button>
+    <button class="btn-rec btn-stop"  id="btnStop"  onclick="stopRec(false)" disabled>■ Stop</button>
+    <button class="btn-rec btn-back"  onclick="goBack()">✕</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN 2 — RESULTS ══════════════════════════════════════════════════ -->
+<div class="screen" id="s2">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PulseWave</div>
+    <div class="topbar-title">Pulse Wave Indices</div>
+    <div class="topbar-right"></div>
+  </div>
+  <div class="results-wrap">
+
+    <div class="res-header">
+      <div class="res-name" id="rName">—</div>
+      <div class="res-sub" id="rSub">—</div>
+    </div>
+
+    <!-- Annotated waveform -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:4px">
+      <div class="wave-lbl">Representative pulse cycle (annotated)</div>
+      <canvas id="waveAnnotated" class="wave-annotated"></canvas>
+      <div class="wave-legend">
+        <div class="wl-item"><div class="wl-dot" style="background:#2dd4a0"></div>Systolic peak (P1)</div>
+        <div class="wl-item"><div class="wl-dot" style="background:#f0a832"></div>Dicrotic notch (DN)</div>
+        <div class="wl-item"><div class="wl-dot" style="background:#5b9cf6"></div>Diastolic peak (P2)</div>
+        <div class="wl-item"><div class="wl-dot" style="background:#e8504a"></div>RR interval markers</div>
+      </div>
+    </div>
+
+    <!-- CARDIAC TIMING -->
+    <div class="idx-section-title">▸ Cardiac timing indices</div>
+    <div class="idx-grid three">
+      <div class="idx-card">
+        <div class="idx-name">Heart Rate</div>
+        <div class="idx-val" id="rHR">--</div>
+        <div class="idx-unit">bpm</div>
+        <div class="idx-desc">Compensatory tachycardia — elevated in hyperdynamic portal HTN</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Mean RR</div>
+        <div class="idx-val" id="rRR">--</div>
+        <div class="idx-unit">ms</div>
+        <div class="idx-desc">Inter-beat interval; shorter = faster HR</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">RMSSD</div>
+        <div class="idx-val" id="rRMSSD">--</div>
+        <div class="idx-unit">ms</div>
+        <div class="idx-desc">Short-term HRV; reflects vagal tone and autonomic modulation</div>
+      </div>
+    </div>
+    <div class="idx-grid" style="margin-top:8px">
+      <div class="idx-card">
+        <div class="idx-name">SDNN</div>
+        <div class="idx-val" id="rSDNN">--</div>
+        <div class="idx-unit">ms</div>
+        <div class="idx-desc">Overall HRV; reduced in advanced cirrhosis-related autonomic neuropathy</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">pNN50</div>
+        <div class="idx-val" id="rPNN50">--</div>
+        <div class="idx-unit">%</div>
+        <div class="idx-desc">% successive RR pairs differing &gt;50ms; parasympathetic index</div>
+      </div>
+    </div>
+
+    <!-- PERIPHERAL VASCULAR -->
+    <div class="idx-section-title">▸ Peripheral vascular indices</div>
+    <div class="idx-grid">
+      <div class="idx-card">
+        <div class="idx-name">Perfusion Index</div>
+        <div class="idx-val" id="rPI">--</div>
+        <div class="idx-unit">AC/DC %</div>
+        <div class="idx-desc">Pulsatile/non-pulsatile ratio; raised in peripheral vasodilation (hyperdynamic state)</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Aug. Index</div>
+        <div class="idx-val" id="rAI">--</div>
+        <div class="idx-unit">%</div>
+        <div class="idx-desc">Reflected wave / pulse pressure; LOW value = low SVR = vasodilated</div>
+      </div>
+    </div>
+
+    <!-- WAVEFORM MORPHOLOGY -->
+    <div class="idx-section-title">▸ Waveform morphology indices</div>
+    <div class="idx-grid three">
+      <div class="idx-card">
+        <div class="idx-name">Upstroke slope</div>
+        <div class="idx-val" id="rUS">--</div>
+        <div class="idx-unit">amp/sample</div>
+        <div class="idx-desc">Diastole→systole steepness; steeper = higher CO / lower resistance</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Dicrotic notch</div>
+        <div class="idx-val" id="rDN">--</div>
+        <div class="idx-unit">% RR</div>
+        <div class="idx-desc">Notch position in cardiac cycle; delayed in vasodilated low-resistance states</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Pulse width</div>
+        <div class="idx-val" id="rPW">--</div>
+        <div class="idx-unit">% RR</div>
+        <div class="idx-desc">Width of systolic wave at 50% amplitude; wider in hyperdynamic states</div>
+      </div>
+    </div>
+    <div class="idx-grid" style="margin-top:8px">
+      <div class="idx-card">
+        <div class="idx-name">Crest time</div>
+        <div class="idx-val" id="rCT">--</div>
+        <div class="idx-unit">ms</div>
+        <div class="idx-desc">Time from pulse foot to systolic peak; shortened with increased cardiac output</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Reflection index</div>
+        <div class="idx-val" id="rRI">--</div>
+        <div class="idx-unit">%</div>
+        <div class="idx-desc">Diastolic peak / systolic peak height; elevated in high peripheral resistance</div>
+      </div>
+    </div>
+
+    <!-- SIGNAL QUALITY -->
+    <div class="idx-section-title">▸ Signal quality</div>
+    <div class="idx-grid three">
+      <div class="idx-card">
+        <div class="idx-name">SNR</div>
+        <div class="idx-val" id="rSNR">--</div>
+        <div class="idx-unit">dB</div>
+        <div class="idx-desc">Signal-to-noise ratio; &gt;20dB acceptable</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Sample rate</div>
+        <div class="idx-val" id="rSR">--</div>
+        <div class="idx-unit">Hz</div>
+        <div class="idx-desc">Camera fps; 30–60 Hz target</div>
+      </div>
+      <div class="idx-card">
+        <div class="idx-name">Peaks detected</div>
+        <div class="idx-val" id="rPeaks">--</div>
+        <div class="idx-unit">beats</div>
+        <div class="idx-desc">Valid RR pairs used in analysis</div>
+      </div>
+    </div>
+
+    <!-- CORRELATION TABLE -->
+    <div class="corr-box">
+      <div class="corr-title">Pending clinical correlation</div>
+      <div class="corr-row"><span class="corr-param">Oesophageal varices (grade)</span><span class="corr-status pending">EGD pending</span></div>
+      <div class="corr-row"><span class="corr-param">Red colour signs / VNT status</span><span class="corr-status pending">EGD pending</span></div>
+      <div class="corr-row"><span class="corr-param">Gastric varices (Sarin)</span><span class="corr-status pending">EGD pending</span></div>
+      <div class="corr-row"><span class="corr-param">CTP score / MELD-Na</span><span class="corr-status pending">Labs pending</span></div>
+      <div class="corr-row"><span class="corr-param">Serum albumin / INR</span><span class="corr-status pending">Labs pending</span></div>
+      <div class="corr-row"><span class="corr-param">Platelet count</span><span class="corr-status pending">Labs pending</span></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn-export" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn-export" onclick="exportJSON()">⬇ JSON</button>
+    </div>
+    <button class="btn-new" onclick="goNew()">+ New Recording</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN 3 — SESSIONS ═════════════════════════════════════════════════ -->
+<div class="screen" id="s3">
+  <div class="topbar">
+    <div class="brand"><b>BIG</b> · PulseWave</div>
+    <div class="topbar-title">Sessions</div>
+    <div class="topbar-right" id="sessCount"></div>
+  </div>
+  <div class="db-actions">
+    <button class="btn-export" style="flex:1" onclick="exportAll()">⬇ All · CSV</button>
+    <button class="btn-export" style="flex:1" onclick="backup()">⬇ Backup</button>
+    <button class="btn-export" style="flex:1;color:var(--amber);border-color:rgba(240,168,50,.3)" onclick="document.getElementById('restoreFile').click()">⬆ Restore</button>
+  </div>
+  <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restore(event)">
+  <div style="padding:5px 20px 0;font-size:11px;color:var(--muted)">Export CSV before clearing browser data.</div>
+  <div class="sess-list" id="sessList"><div class="sess-empty">No sessions yet.</div></div>
+</div>
+
+<!-- ── NAV ── -->
+<nav class="navbar">
+  <button class="nav-btn on" id="n0" onclick="nav(0)"><span class="nav-icon">＋</span><span class="nav-lbl">NEW</span></button>
+  <button class="nav-btn"    id="n1" onclick="nav(1)"><span class="nav-icon">⬤</span><span class="nav-lbl">RECORD</span></button>
+  <button class="nav-btn"    id="n2" onclick="nav(2)"><span class="nav-icon">◈</span><span class="nav-lbl">RESULTS</span></button>
+  <button class="nav-btn"    id="n3" onclick="nav(3)"><span class="nav-icon">≡</span><span class="nav-lbl">SESSIONS</span></button>
+</nav>
+
+<script>
+// ══ STATE ══════════════════════════════════════════════════════════════════
+const SECS=30, SETTLE=4, WWIN=300;
+let sessions=JSON.parse(localStorage.getItem('big_pw')||'[]');
+let cur={}, sex='M';
+let stream=null, raf=null, recording=false, t0=null;
+let raw=[], wbuf=[], lastRes=null;
+
+// ══ NAV ════════════════════════════════════════════════════════════════════
+function nav(i){
+  ['s0','s1','s2','s3'].forEach((s,j)=>{
+    document.getElementById(s).classList.toggle('active',j===i);
+    document.getElementById('n'+j).classList.toggle('on',j===i);
+  });
+  if(i===3) renderSessions();
+}
+
+// ══ PATIENT FORM ════════════════════════════════════════════════════════════
+
+function setSex(btn){
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); sex=btn.dataset.v;
+}
+function checkReady(){
+  document.getElementById('btnGo').disabled=
+    !(document.getElementById('fName').value.trim()&&document.getElementById('fAge').value);
+}
+['fName','fAge','fID'].forEach(id=>document.getElementById(id).addEventListener('input',checkReady));
+
+function goRecord(){
+  cur={
+    id:   document.getElementById('fID').value.trim()||('BIG-PW-'+String(sessions.length+1).padStart(3,'0')),
+    name: document.getElementById('fName').value.trim(),
+    age:  document.getElementById('fAge').value,
+    sex,
+    notes:document.getElementById('fNotes').value.trim()
+  };
+  document.getElementById('bName').textContent=cur.name;
+  document.getElementById('bMeta').textContent=cur.id+' · '+cur.age+'y · '+cur.sex;
+
+  nav(1);
+}
+function goBack(){ if(recording) stopRec(false); nav(0); }
+function goNew(){
+  ['fID','fName','fAge','fNotes'].forEach(id=>document.getElementById(id).value='');
+  sex='M';
+
+  document.querySelectorAll('.seg-btn').forEach((b,i)=>b.classList.toggle('on',i===0));
+  document.getElementById('btnGo').disabled=true;
+  nav(0);
+}
+
+// ══ CAMERA ══════════════════════════════════════════════════════════════════
+const video=document.getElementById('video');
+const cam=document.getElementById('camCanvas');
+const ctx=cam.getContext('2d',{willReadFrequently:true});
+
+async function startCam(){
+  // Torch must be requested in the initial getUserMedia call on Android Chrome.
+  // Post-hoc applyConstraints({torch:true}) is ignored on Samsung devices.
+  // We try progressively simpler constraints if the strict ones fail.
+  const opts=[
+    // 1st try: rear camera + torch in initial request (works on most Android)
+    {video:{facingMode:{exact:'environment'},width:{ideal:320},height:{ideal:240},frameRate:{ideal:30},advanced:[{torch:true}]}},
+    // 2nd try: rear camera + torch without advanced wrapper
+    {video:{facingMode:{exact:'environment'},width:{ideal:320},height:{ideal:240},frameRate:{ideal:30},torch:true}},
+    // 3rd try: rear camera without torch (torch applied after via applyConstraints)
+    {video:{facingMode:{exact:'environment'},width:{ideal:320},height:{ideal:240},frameRate:{ideal:30}}},
+    // 4th try: any camera
+    {video:{width:{ideal:320}}}
+  ];
+  for(const o of opts){
+    try{stream=await navigator.mediaDevices.getUserMedia(o);break}catch{}
+  }
+  if(!stream) throw new Error('No camera');
+  video.srcObject=stream;
+  await new Promise(r=>video.onloadedmetadata=r);
+  video.play();
+  cam.width=video.videoWidth||320; cam.height=video.videoHeight||240;
+
+  // Also try applyConstraints after stream starts (works on some devices)
+  const track=stream.getVideoTracks()[0];
+  const capabilities=track.getCapabilities?.()|| {};
+  if(capabilities.torch){
+    try{ await track.applyConstraints({advanced:[{torch:true}]}); }catch{}
+  } else {
+    // Fallback: try anyway in case getCapabilities is not supported
+    try{ await track.applyConstraints({advanced:[{torch:true}]}); }catch{}
+  }
+}
+function stopCam(){
+  if(!stream) return;
+  // Stopping the track is the only reliable way to kill torch on iOS Safari.
+  // applyConstraints({torch:false}) is not honoured on iPhone — skip it.
+  stream.getTracks().forEach(t=>t.stop());
+  stream=null;
+  video.srcObject=null;
+}
+
+// ══ SIGNAL PROCESSING ═══════════════════════════════════════════════════════
+function mavg(a,w){return a.map((_,i)=>{const lo=Math.max(0,i-~~(w/2)),hi=Math.min(a.length,i+~~(w/2)+1);let s=0;for(let j=lo;j<hi;j++)s+=a[j];return s/(hi-lo)})}
+function bp(r){const lp=mavg(r,4),tr=mavg(r,180);return lp.map((v,i)=>v-tr[i])}
+function peaks(sig,md=25,tr=0.35){
+  const mn=Math.min(...sig),mx=Math.max(...sig),th=mn+(mx-mn)*tr,ps=[];
+  for(let i=2;i<sig.length-2;i++)
+    if(sig[i]>th&&sig[i]>=sig[i-1]&&sig[i]>=sig[i-2]&&sig[i]>=sig[i+1]&&sig[i]>=sig[i+2])
+      if(!ps.length||(i-ps[ps.length-1])>=md) ps.push(i);
+  return ps;
+}
+
+function analyse(rawData){
+  const settled=rawData.filter(d=>d.t>=SETTLE);
+  if(settled.length<60) return null;
+  const reds=settled.map(d=>d.r), ts=settled.map(d=>d.t);
+  const filt=bp(reds), pks=peaks(filt);
+  const n=rawData.length, dur=rawData[n-1].t, sr=+(n/dur).toFixed(1);
+
+  // ── RR intervals & HR / HRV ─────────────────────────────────────────────
+  let hr=null,rr=null,rmssd=null,sdnn=null,pnn50=null,rrArr=[];
+  if(pks.length>=3){
+    rrArr=pks.slice(1).map((p,i)=>(ts[p]-ts[pks[i]])*1000).filter(r=>r>300&&r<1500);
+    if(rrArr.length>=2){
+      const mn=rrArr.reduce((a,b)=>a+b,0)/rrArr.length;
+      rr=+mn.toFixed(1);
+      hr=Math.round(60000/mn);
+      if(hr<30||hr>220) hr=null;
+      const sd2=rrArr.reduce((a,v)=>a+(v-mn)**2,0)/rrArr.length;
+      sdnn=+Math.sqrt(sd2).toFixed(1);
+      const diffs=rrArr.slice(1).map((v,i)=>(v-rrArr[i])**2);
+      rmssd=+Math.sqrt(diffs.reduce((a,b)=>a+b,0)/diffs.length).toFixed(1);
+      const nn50=rrArr.slice(1).filter((v,i)=>Math.abs(v-rrArr[i])>50).length;
+      pnn50=+(nn50/(rrArr.length-1)*100).toFixed(1);
+    }
+  }
+
+  // ── Perfusion index & SNR ───────────────────────────────────────────────
+  const mn=Math.min(...reds),mx=Math.max(...reds),dc=reds.reduce((a,b)=>a+b,0)/reds.length;
+  const pi=+(( mx-mn)/dc*100).toFixed(2);
+  const snr=(mx-mn)>0?+(20*Math.log10((mx-mn)/2)).toFixed(1):null;
+
+  // ── Waveform morphology (average over middle peaks) ─────────────────────
+  const usePks=pks.slice(Math.floor(pks.length*.25),Math.floor(pks.length*.75));
+  let aiArr=[],usArr=[],dnArr=[],pwArr=[],ctArr=[],riArr=[];
+  const SP=ts.length>1?(ts[ts.length-1]-ts[0])/(ts.length-1)*1000:1000/sr; // ms per sample
+
+  for(const pk of usePks){
+    const hw=35, ws=Math.max(0,pk-hw), we=Math.min(filt.length-1,pk+hw);
+    const seg=filt.slice(ws,we+1), pkl=pk-ws;
+    if(pkl<6) continue;
+
+    // Trough before peak (foot of pulse)
+    let foot=0;
+    for(let i=pkl-1;i>=0;i--){ if(seg[i]<=seg[i+1]){foot=i;break} }
+
+    // Upstroke
+    const upS=pkl-foot, upA=seg[pkl]-seg[foot];
+    if(upS>0) usArr.push(+(upA/upS).toFixed(3));
+
+    // Crest time (ms from foot to peak)
+    ctArr.push(+(upS*SP).toFixed(1));
+
+    // Pulse width at 50% amplitude
+    const half=seg[foot]+(seg[pkl]-seg[foot])*0.5;
+    let w0=foot,w1=pkl;
+    for(let i=foot;i<pkl;i++) if(seg[i]>=half){w0=i;break}
+    for(let i=pkl;i<seg.length-1;i++) if(seg[i]<=half){w1=i;break}
+    const rr_samples=rrArr.length>0?(rrArr.reduce((a,b)=>a+b,0)/rrArr.length)/SP:60;
+    pwArr.push(+((w1-w0)/rr_samples*100).toFixed(1));
+
+    // Dicrotic notch: local min after peak in first 65% of cycle
+    let ni=-1,nv=Infinity;
+    const notchEnd=Math.min(pkl+Math.floor(rr_samples*0.65),seg.length-2);
+    for(let i=pkl+2;i<notchEnd;i++)
+      if(seg[i]<seg[i-1]&&seg[i]<seg[i+1]&&seg[i]<nv){nv=seg[i];ni=i}
+
+    if(ni>0){
+      dnArr.push(+((ni-foot)/rr_samples*100).toFixed(1));
+      // Augmentation index
+      const pp=seg[pkl]-seg[foot];
+      if(pp>0) aiArr.push(+((nv-seg[foot])/pp*100).toFixed(1));
+
+      // Diastolic peak (P2): local max after notch
+      let dp=nv;
+      for(let i=ni+1;i<Math.min(ni+Math.floor(rr_samples*.4),seg.length-1);i++)
+        if(seg[i]>dp) dp=seg[i];
+      if(pp>0) riArr.push(+((dp-seg[foot])/pp*100).toFixed(1));
+    }
+  }
+
+  const avg=a=>a.length?+(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):null;
+  return {
+    hr,rr,rmssd,sdnn,pnn50,pi,snr,
+    augIndex:    avg(aiArr),
+    upstroke:    avg(usArr),
+    dicroticNotch:avg(dnArr),
+    pulseWidth:  avg(pwArr),
+    crestTime:   avg(ctArr),
+    reflectionIdx:avg(riArr),
+    peaksDetected:pks.length,
+    sr, dur:+dur.toFixed(1), samples:n,
+    filt, pks, ts  // for waveform drawing
+  };
+}
+
+// ══ DRAWING ══════════════════════════════════════════════════════════════════
+const wc=document.getElementById('waveCanvas');
+const wctx=wc.getContext('2d');
+
+function drawLive(){
+  const W=wc.width=wc.offsetWidth, H=wc.height=wc.offsetHeight||100;
+  wctx.clearRect(0,0,W,H);
+  if(wbuf.length<4) return;
+  const tr=mavg(wbuf,120), disp=wbuf.map((v,i)=>v-tr[i]);
+  const mn=Math.min(...disp),mx=Math.max(...disp),range=mx-mn||1;
+  wctx.strokeStyle='rgba(255,255,255,0.04)';wctx.lineWidth=1;
+  for(let i=1;i<4;i++){const y=H/4*i;wctx.beginPath();wctx.moveTo(0,y);wctx.lineTo(W,y);wctx.stroke()}
+  wctx.beginPath();wctx.strokeStyle='#2dd4a0';wctx.lineWidth=1.8;wctx.lineJoin='round';
+  for(let i=0;i<disp.length;i++){const x=(i/(disp.length-1))*W,y=H-((disp[i]-mn)/range)*(H-12)-6;i===0?wctx.moveTo(x,y):wctx.lineTo(x,y)}
+  wctx.stroke();
+}
+
+function drawAnnotated(res){
+  const cv=document.getElementById('waveAnnotated');
+  cv.width=cv.offsetWidth||340; cv.height=120;
+  const c=cv.getContext('2d'), W=cv.width, H=cv.height;
+  const {filt,pks,ts}=res;
+  if(!filt||!pks||pks.length<2) return;
+
+  // Show 2 clean cycles from the middle
+  const mid=Math.floor(pks.length/2);
+  const i0=Math.max(0,pks[mid-1]-20), i1=Math.min(filt.length-1,pks[mid+1]+20);
+  const seg=filt.slice(i0,i1+1);
+  const mn=Math.min(...seg),mx=Math.max(...seg),range=mx-mn||1;
+  const px2=i=>((i-i0)/(i1-i0))*W;
+  const py=v=>H-((v-mn)/range)*(H-16)-8;
+
+  // Grid
+  c.strokeStyle='rgba(255,255,255,0.04)';c.lineWidth=1;
+  for(let i=1;i<4;i++){const y=H/4*i;c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
+
+  // Waveform
+  c.beginPath();c.strokeStyle='rgba(45,212,160,0.5)';c.lineWidth=1.5;c.lineJoin='round';
+  seg.forEach((v,i)=>{const x=px2(i0+i),y=py(v);i===0?c.moveTo(x,y):c.lineTo(x,y)});
+  c.stroke();
+
+  // Annotate visible peaks
+  for(const pk of pks){
+    if(pk<i0||pk>i1) continue;
+    // Systolic peak (P1) — teal
+    c.fillStyle='#2dd4a0';
+    c.beginPath();c.arc(px2(pk),py(filt[pk]),4,0,Math.PI*2);c.fill();
+    c.fillStyle='rgba(45,212,160,0.6)';c.font='9px DM Mono,monospace';
+    c.fillText('P1',px2(pk)+5,py(filt[pk])-4);
+
+    // Dicrotic notch
+    let ni=-1,nv=Infinity;
+    const rr_s=30;
+    for(let i=pk+2;i<Math.min(pk+Math.floor(rr_s*.65),filt.length-2);i++)
+      if(filt[i]<filt[i-1]&&filt[i]<filt[i+1]&&filt[i]<nv&&i<=i1){nv=filt[i];ni=i}
+    if(ni>0&&ni>=i0&&ni<=i1){
+      c.fillStyle='#f0a832';
+      c.beginPath();c.arc(px2(ni),py(nv),3,0,Math.PI*2);c.fill();
+      c.fillStyle='rgba(240,168,50,0.7)';c.font='9px DM Mono,monospace';
+      c.fillText('DN',px2(ni)+4,py(nv)+12);
+
+      // Diastolic peak P2
+      let dp=nv,dpi=ni;
+      for(let i=ni+1;i<Math.min(ni+20,filt.length-1,i1+1);i++)
+        if(filt[i]>dp){dp=filt[i];dpi=i}
+      if(dpi>ni&&dpi>=i0&&dpi<=i1){
+        c.fillStyle='#5b9cf6';
+        c.beginPath();c.arc(px2(dpi),py(dp),3,0,Math.PI*2);c.fill();
+        c.fillStyle='rgba(91,156,246,0.7)';c.font='9px DM Mono,monospace';
+        c.fillText('P2',px2(dpi)+4,py(dp)-4);
+      }
+    }
+  }
+
+  // RR markers (vertical dashes at each detected peak)
+  c.strokeStyle='rgba(232,80,74,0.35)';c.lineWidth=1;c.setLineDash([3,3]);
+  for(const pk of pks){
+    if(pk<i0||pk>i1) continue;
+    const x=px2(pk);c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();
+  }
+  c.setLineDash([]);
+}
+
+// ══ RECORDING ════════════════════════════════════════════════════════════════
+function frame(ts){
+  if(!recording) return;
+  const el=(ts-t0)/1000;
+  if(el>=SECS){stopRec(true);return}
+  ctx.drawImage(video,0,0,cam.width,cam.height);
+  const cx=~~(cam.width/2),cy=~~(cam.height/2);
+  const px=ctx.getImageData(cx-20,cy-20,40,40).data;
+  let r=0,g=0,b=0,n=0;
+  for(let i=0;i<px.length;i+=4){r+=px[i];g+=px[i+1];b+=px[i+2];n++}
+  r/=n;g/=n;b/=n;
+  raw.push({t:+el.toFixed(4),r:+r.toFixed(2),g:+g.toFixed(2),b:+b.toFixed(2)});
+  wbuf.push(r); if(wbuf.length>WWIN) wbuf.shift();
+  drawLive(); quality(r,g,b); liveMet(); progress(el);
+  raf=requestAnimationFrame(frame);
+}
+
+function quality(r,g,b){
+  const q=Math.min(100,Math.max(0,(r/(g+b+1)-.5)*120));
+  const f=document.getElementById('qFill'),l=document.getElementById('qLbl'),ring=document.getElementById('sRing'),h=document.getElementById('sHint');
+  f.style.width=q+'%';
+  if(q>60){f.className='qual-fill';l.textContent='good';ring.className='sensor-ring contact';h.textContent='Hold still — recording…'}
+  else if(q>25){f.className='qual-fill warn';l.textContent='weak';ring.className='sensor-ring';h.textContent='Press more firmly over all lenses'}
+  else{f.className='qual-fill bad';l.textContent='none';ring.className='sensor-ring bad';h.textContent='Cover camera lens + flash completely'}
+}
+
+function liveMet(){
+  if(raw.length<60) return;
+  const r=raw.slice(-90).map(d=>d.r),mn=Math.min(...r),mx=Math.max(...r),dc=r.reduce((a,b)=>a+b,0)/r.length;
+  const pi=dc>0?+((mx-mn)/dc*100).toFixed(1):0;
+  sm('lPI',pi,pi>.3);
+  if(raw.length>=120){
+    const buf=raw.slice(-180).map(d=>d.r),f=bp(buf),ps=peaks(f);
+    if(ps.length>=3){
+      const ts2=raw.slice(-180).map(d=>d.t);
+      const rrs=ps.slice(1).map((p,i)=>(ts2[p]-ts2[ps[i]])*1000).filter(r=>r>300&&r<1500);
+      if(rrs.length>=2){
+        const mr=rrs.reduce((a,b)=>a+b,0)/rrs.length,h=Math.round(60000/mr);
+        if(h>=40&&h<=180) sm('lHR',h,true);
+      }
+    }
+  }
+}
+function sm(id,v,ok){const e=document.getElementById(id);e.textContent=v;e.className='live-val'+(ok?'':' dim')}
+function progress(e){document.getElementById('pFill').style.width=Math.min(100,e/SECS*100)+'%';document.getElementById('pTime').textContent=Math.floor(e)+' / 30s'}
+function setSt(msg,cls){const e=document.getElementById('statusLine');e.textContent=msg;e.className='status-line '+cls}
+
+async function startRec(){
+  setSt('Starting camera…','');
+  document.getElementById('btnStart').disabled=true;
+  try{await startCam()}catch{setSt('Camera access denied — allow permission','err');document.getElementById('btnStart').disabled=false;return}
+  raw=[];wbuf=[];recording=true;t0=null;
+  ['lHR','lPI'].forEach(id=>{const e=document.getElementById(id);e.textContent='--';e.className='live-val dim'});
+  document.getElementById('pFill').style.width='0%';
+  document.getElementById('btnStop').disabled=false;
+  setSt('Place fingertip over camera','ok');
+  raf=requestAnimationFrame(ts=>{t0=ts;frame(ts)});
+}
+
+function stopRec(auto){
+  recording=false;cancelAnimationFrame(raf);stopCam();
+  document.getElementById('btnStop').disabled=true;
+  document.getElementById('btnStart').disabled=false;
+  document.getElementById('sRing').className='sensor-ring';
+  document.getElementById('qFill').style.width='0%';
+  if(raw.length>60){
+    setSt((auto?'Complete · ':'Stopped · ')+raw.length+' samples','ok');
+    finishAndShow();
+  } else setSt('Not enough data recorded','warn');
+}
+
+function finishAndShow(){
+  const res=analyse(raw);
+  if(!res){setSt('Analysis failed — try again','err');return}
+
+  lastRes={
+    ...cur,
+    timestamp: new Date().toISOString(),
+    ppg: {
+      hr:res.hr, rr:res.rr, rmssd:res.rmssd, sdnn:res.sdnn, pnn50:res.pnn50,
+      pi:res.pi, snr:res.snr,
+      augIndex:res.augIndex, upstroke:res.upstroke,
+      dicroticNotch:res.dicroticNotch, pulseWidth:res.pulseWidth,
+      crestTime:res.crestTime, reflectionIdx:res.reflectionIdx,
+      peaksDetected:res.peaksDetected, sr:res.sr, dur:res.dur, samples:res.samples
+    },
+    rawData: raw
+  };
+
+  // Save to localStorage (summary without rawData)
+  const summary={...lastRes, rawData:undefined};
+  sessions.unshift(summary);
+  localStorage.setItem('big_pw', JSON.stringify(sessions.slice(0,500)));
+
+  // Populate results screen
+  document.getElementById('rName').textContent=lastRes.name;
+  document.getElementById('rSub').textContent=lastRes.id+' · '+lastRes.age+'y · '+lastRes.sex+' · '+new Date(lastRes.timestamp).toLocaleString();
+
+  const p=lastRes.ppg;
+  const sr=(id,v)=>{document.getElementById(id).textContent=v!=null?v:'--'};
+  sr('rHR',p.hr); sr('rRR',p.rr); sr('rRMSSD',p.rmssd); sr('rSDNN',p.sdnn); sr('rPNN50',p.pnn50);
+  sr('rPI',p.pi); sr('rAI',p.augIndex);
+  sr('rUS',p.upstroke); sr('rDN',p.dicroticNotch); sr('rPW',p.pulseWidth);
+  sr('rCT',p.crestTime); sr('rRI',p.reflectionIdx);
+  sr('rSNR',p.snr); sr('rSR',p.sr); sr('rPeaks',p.peaksDetected);
+
+  nav(2);
+  // Draw annotated waveform after nav (needs layout)
+  setTimeout(()=>drawAnnotated(res),80);
+}
+
+// ══ EXPORT ═══════════════════════════════════════════════════════════════════
+function exportCSV(){
+  if(!lastRes) return;
+  const p=lastRes.ppg||{};
+  const hdr=`# BIG PulseWave Export\n# ${lastRes.id} · ${lastRes.name} · ${lastRes.timestamp}\n# Group: ${lastRes.group} | Notes: ${lastRes.notes||'none'}\n`;
+  const paramLines=[
+    'parameter,value,unit',
+    `heart_rate,${p.hr||''},bpm`,
+    `mean_rr,${p.rr||''},ms`,
+    `rmssd,${p.rmssd||''},ms`,
+    `sdnn,${p.sdnn||''},ms`,
+    `pnn50,${p.pnn50||''},%`,
+    `perfusion_index,${p.pi||''},%`,
+    `snr,${p.snr||''},dB`,
+    `augmentation_index,${p.augIndex||''},%`,
+    `upstroke_slope,${p.upstroke||''},amp/sample`,
+    `dicrotic_notch,${p.dicroticNotch||''},%RR`,
+    `pulse_width,${p.pulseWidth||''},%RR`,
+    `crest_time,${p.crestTime||''},ms`,
+    `reflection_index,${p.reflectionIdx||''},%`,
+    `peaks_detected,${p.peaksDetected||''},n`,
+    `sample_rate,${p.sr||''},Hz`,
+    `duration,${p.dur||''},s`,
+  ].join('\n');
+  const rawLines='\n\n# Raw data\ntime_s,red,green,blue\n'+(lastRes.rawData||[]).map(d=>`${d.t},${d.r},${d.g},${d.b}`).join('\n');
+  dl(`BIG_PW_${lastRes.id}_${lastRes.timestamp.slice(0,10)}.csv`, hdr+paramLines+rawLines, 'text/csv');
+}
+
+function exportJSON(){
+  if(!lastRes) return;
+  dl(`BIG_PW_${lastRes.id}_${lastRes.timestamp.slice(0,10)}.json`, JSON.stringify(lastRes,null,2), 'application/json');
+}
+
+function exportAll(){
+  if(!sessions.length){alert('No sessions.');return}
+  const cols=['study_id','timestamp','name','age','sex','notes',
+    'hr_bpm','mean_rr_ms','rmssd_ms','sdnn_ms','pnn50_pct',
+    'perf_index_pct','snr_db',
+    'aug_index_pct','upstroke_slope','dicrotic_notch_pct_rr',
+    'pulse_width_pct_rr','crest_time_ms','reflection_idx_pct',
+    'peaks_detected','sample_rate_hz','duration_s'].join(',');
+  const rows=sessions.map(s=>{
+    const p=s.ppg||{};
+    return [s.id,s.timestamp,s.name,s.age,s.sex,s.notes||'',
+      p.hr,p.rr,p.rmssd,p.sdnn,p.pnn50,p.pi,p.snr,
+      p.augIndex,p.upstroke,p.dicroticNotch,p.pulseWidth,p.crestTime,p.reflectionIdx,
+      p.peaksDetected,p.sr,p.dur
+    ].map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',');
+  });
+  dl(`BIG_PW_AllSessions_${new Date().toISOString().slice(0,10)}.csv`, cols+'\n'+rows.join('\n'), 'text/csv');
+}
+
+function backup(){
+  if(!sessions.length){alert('Nothing to back up.');return}
+  const stamp=new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
+  dl(`BIG_PW_Backup_${stamp}.json`, JSON.stringify({version:1,exported:new Date().toISOString(),sessions},null,2), 'application/json');
+}
+function restore(ev){
+  const f=ev.target.files[0];if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result),inc=d.sessions??d;
+      if(!Array.isArray(inc)) throw 0;
+      const keys=new Set(sessions.map(s=>s.id+'|'+s.timestamp));
+      const neu=inc.filter(s=>!keys.has(s.id+'|'+s.timestamp));
+      sessions=[...neu,...sessions].slice(0,500);
+      localStorage.setItem('big_pw',JSON.stringify(sessions));
+      renderSessions(); alert('Restored '+neu.length+' session(s).');
+    }catch{alert('Invalid backup file.')}
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+function dl(name,content,mime){
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([content],{type:mime})),download:name});
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+// ══ SESSIONS LIST ════════════════════════════════════════════════════════════
+function renderSessions(){
+  const el=document.getElementById('sessList'),ct=document.getElementById('sessCount');
+  ct.textContent=sessions.length?sessions.length+' recorded':'';
+  if(!sessions.length){el.innerHTML='<div class="sess-empty">No sessions yet.</div>';return}
+  el.innerHTML=sessions.map((s,i)=>{
+    const p=s.ppg||{};
+    return `<div class="sess-item" onclick="loadSess(${i})">
+      <div class="si-top">
+        <div class="si-name">${s.name}</div>
+        <div class="si-date">${new Date(s.timestamp).toLocaleDateString()}</div>
+      </div>
+      <div class="si-vals">
+        <div class="si-v">${s.id}</div>
+        <div class="si-v">HR <b>${p.hr??'--'}</b>bpm</div>
+        <div class="si-v">PI <b>${p.pi??'--'}</b>%</div>
+        <div class="si-v">AI <b>${p.augIndex??'--'}</b>%</div>
+        <div class="si-v">RMSSD <b>${p.rmssd??'--'}</b>ms</div>
+        <div class="si-v">DN <b>${p.dicroticNotch??'--'}</b>%RR</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadSess(i){
+  lastRes=sessions[i];
+  const p=lastRes.ppg||{};
+  document.getElementById('rName').textContent=lastRes.name;
+  document.getElementById('rSub').textContent=lastRes.id+' · '+lastRes.age+'y · '+lastRes.sex+' · '+new Date(lastRes.timestamp).toLocaleString();
+  const sr=(id,v)=>{document.getElementById(id).textContent=v!=null?v:'--'};
+  sr('rHR',p.hr);sr('rRR',p.rr);sr('rRMSSD',p.rmssd);sr('rSDNN',p.sdnn);sr('rPNN50',p.pnn50);
+  sr('rPI',p.pi);sr('rAI',p.augIndex);sr('rUS',p.upstroke);sr('rDN',p.dicroticNotch);
+  sr('rPW',p.pulseWidth);sr('rCT',p.crestTime);sr('rRI',p.reflectionIdx);
+  sr('rSNR',p.snr);sr('rSR',p.sr);sr('rPeaks',p.peaksDetected);
+  nav(2);
+  // No raw data in saved sessions — clear canvas
+  const cv=document.getElementById('waveAnnotated');cv.width=cv.offsetWidth||340;cv.height=120;
+  cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+}
+</script>
+</body>
+</html>
